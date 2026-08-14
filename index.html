@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Field Report — Champlin Studios</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Field Report">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="ds/tokens/fonts.css">
+<link rel="stylesheet" href="ds/tokens/colors.css">
+<link rel="stylesheet" href="ds/tokens/typography.css">
+<link rel="stylesheet" href="ds/tokens/spacing.css">
+<link rel="stylesheet" href="ds/tokens/base.css">
+<link rel="stylesheet" href="ds/styles.css">
+<script src="ds/_ds_bundle.js"></script>
+<style>
+@font-face{font-family:'Instrument Sans';src:url('fonts/InstrumentSans-Regular.ttf') format('truetype');font-weight:400}
+@font-face{font-family:'Instrument Sans';src:url('fonts/InstrumentSans-Medium.ttf') format('truetype');font-weight:500}
+@font-face{font-family:'Instrument Sans';src:url('fonts/InstrumentSans-SemiBold.ttf') format('truetype');font-weight:600}
+@font-face{font-family:'Instrument Sans';src:url('fonts/InstrumentSans-Bold.ttf') format('truetype');font-weight:700}
+@font-face{font-family:'Instrument Sans Cond';src:url('fonts/InstrumentSans_Condensed-Medium.ttf') format('truetype');font-weight:500}
+@font-face{font-family:'Instrument Sans Cond';src:url('fonts/InstrumentSans_Condensed-SemiBold.ttf') format('truetype');font-weight:600}
+@font-face{font-family:'Darker Grotesque';src:url('fonts/DarkerGrotesque-Bold.ttf') format('truetype');font-weight:700}
+html,body{margin:0;padding:0}
+body{background:#F4F1EA}
+*{box-sizing:border-box}
+a{color:#2215CC;text-decoration:none}
+a:hover{color:#1a0fa0}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,21,204,.45)}70%{box-shadow:0 0 0 14px rgba(34,21,204,0)}100%{box-shadow:0 0 0 0 rgba(34,21,204,0)}}
+@media (max-width:820px){
+  .om-workspace{padding:0!important;gap:0!important;background:#000!important}
+  .om-capture-pane{flex:1 1 auto!important;width:100%!important;gap:0!important}
+  .om-capture-pane > div:first-child{display:none!important}
+  .om-phone{width:100%!important;height:100vh!important;height:100dvh!important;border-radius:0!important;padding:0!important;box-shadow:none!important}
+  .om-phone > div{border-radius:0!important}
+  .om-statusbar{display:none!important}
+  .om-appbar{padding-top:max(14px,env(safe-area-inset-top))!important}
+  .om-report-pane{padding:16px!important;background:#F4F1EA!important;min-height:100vh}
+  .om-report-page{padding:24px!important;max-width:none!important}
+}
+@media print{
+  @page{margin:.5in}
+  .om-capture-pane,.om-report-actions{display:none!important}
+  .om-workspace{display:block!important;padding:0!important;background:#fff!important;min-height:0!important}
+  .om-report-pane{gap:0!important}
+  .om-report-page{max-width:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+  .om-obs{break-inside:avoid;page-break-inside:avoid}
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:4px}
+</style>
+</helmet>
+<div class="om-workspace" style="display:flex;gap:40px;padding:36px 40px 64px;background:#F4F1EA;min-height:100vh;font-family:'Instrument Sans',system-ui,sans-serif;color:#000;align-items:flex-start;justify-content:center">
+
+  <sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
+  <div class="om-capture-pane" style="display:flex;flex-direction:column;gap:14px;flex:0 0 400px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#2215CC">Field capture</div>
+      <div style="font-size:13px;line-height:1.5;color:#5c5a54;max-width:340px">Drop a pin where you stood, shoot, talk the note in. Nothing to retype later.</div>
+    </div>
+
+    <div class="om-phone" style="width:400px;height:812px;background:#000;border-radius:46px;padding:9px;box-shadow:0 24px 60px rgba(0,0,0,.28)">
+      <div style="width:100%;height:100%;background:#fff;border-radius:38px;overflow:hidden;display:flex;flex-direction:column;position:relative">
+
+        <div class="om-statusbar" style="flex:0 0 46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 6px;font-size:12px;font-weight:600;background:#000;color:#fff">
+          <span>9:41</span>
+          <span style="display:flex;gap:6px;align-items:center;font-family:'Instrument Sans Cond'">LTE 84%</span>
+        </div>
+
+        <div class="om-appbar" style="flex:0 0 auto;background:#000;color:#fff;padding:10px 20px 14px;display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#AFCDF9">Champlin Studios</div>
+            <div onClick="{{ openReport }}" style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:2px;padding:4px 8px;cursor:pointer;display:flex;gap:5px" style-hover="background:#2215CC;border-color:#2215CC"><span>Export report</span><span>{{ obsCount }}</span></div>
+          </div>
+          <div style="font-size:17px;font-weight:600;letter-spacing:-.01em">{{ projectNumber }} — {{ projectName }}</div>
+        </div>
+
+        <sc-if value="{{ isSheets }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow-y:auto;padding:18px 18px 24px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Sheets</div>
+            <sc-for list="{{ sheetCards }}" as="s" hint-placeholder-count="3">
+              <div onClick="{{ s.open }}" style="border:1px solid #E7E4DD;border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;background:#fff;transition:box-shadow 160ms,transform 160ms" style-hover="box-shadow:0 4px 14px rgba(0,0,0,.09);transform:translateY(-2px)">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                  <div style="font-size:15px;font-weight:600">{{ s.id }}</div>
+                  <div style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#2215CC">{{ s.countLabel }}</div>
+                </div>
+                <div style="font-size:12px;color:#6b6963;line-height:1.4">{{ s.name }}</div>
+              </div>
+            </sc-for>
+            <div style="margin-top:6px;border-top:1px solid #E7E4DD;padding-top:14px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Add a sheet</div>
+              <label style="border:1px dashed #C8C4BA;border-radius:4px;padding:14px;text-align:center;font-size:12px;color:#6b6963;cursor:pointer;background:#FAF9F6" style-hover="border-color:#2215CC;color:#2215CC">
+                Upload plan PDF or image
+                <input type="file" accept="application/pdf,image/*" onChange="{{ onSheetUpload }}" style="display:none" />
+              </label>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px">
+                <div style="font-size:11px;color:#8a8880;line-height:1.4">Saved on this device — pins and photos survive a reload.</div>
+                <div onClick="{{ resetAll }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer;white-space:nowrap">Reset</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isPlan }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+            <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid #E7E4DD">
+              <div onClick="{{ goSheets }}" style="font-size:13px;font-weight:600;color:#2215CC;cursor:pointer;padding:4px 2px">‹ Sheets</div>
+              <div style="font-size:13px;font-weight:600">{{ sheetId }}</div>
+              <div onClick="{{ toggleZoom }}" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid #E7E4DD;border-radius:2px;padding:5px 8px;cursor:pointer">{{ zoomLabel }}</div>
+            </div>
+
+            <div style="flex:1;overflow:auto;background:#EDEAE3;position:relative;touch-action:pinch-zoom pan-x pan-y">
+              <sc-if value="{{ planReady }}" hint-placeholder-val="{{ true }}">
+                <div onClick="{{ onPlanClick }}" style="position:relative;width:{{ planWidth }};min-width:100%">
+                  <img src="{{ planSrc }}" alt="plan sheet" style="display:block;width:100%;height:auto;background:#fff" />
+                  <sc-for list="{{ pins }}" as="p" hint-placeholder-count="0">
+                    <div onClick="{{ p.open }}" style="position:absolute;left:{{ p.left }};top:{{ p.top }};transform:translate(-50%,-100%);cursor:pointer;display:flex;flex-direction:column;align-items:center">
+                      <div style="width:28px;height:28px;border-radius:50%;background:#2215CC;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">{{ p.num }}</div>
+                      <div style="width:2px;height:9px;background:#2215CC"></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ planBusy }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#EDEAE3;font-family:'Instrument Sans Cond';font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Rendering sheet…</div>
+              </sc-if>
+              <sc-if value="{{ planFailed }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#EDEAE3;padding:24px;text-align:center">
+                  <div style="font-size:13px;line-height:1.5;color:#6b6963">{{ planErrMsg }}</div>
+                  <div style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:500;letter-spacing:.06em;color:#8a8880;word-break:break-all">{{ planErrPath }}</div>
+                  <div onClick="{{ retryPlan }}" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;border:1px solid #000;border-radius:2px;padding:8px 14px;cursor:pointer;background:#fff">Try again</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ sharpening }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;top:8px;right:8px;font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.7);border-radius:2px;padding:4px 8px">Sharpening…</div>
+              </sc-if>
+            </div>
+
+            <div style="flex:0 0 auto;padding:12px 14px 16px;border-top:1px solid #E7E4DD;display:flex;flex-direction:column;gap:10px;background:#fff">
+              <div style="font-size:12px;color:#6b6963;line-height:1.4">{{ planHint }}</div>
+              <div onClick="{{ togglePlacing }}" style="border-radius:4px;padding:13px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:{{ placeBtnBg }};color:{{ placeBtnFg }};border:1px solid #000;transition:background 160ms">{{ placeBtnLabel }}</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isObs }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+            <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #E7E4DD">
+              <div onClick="{{ backToPlan }}" style="font-size:13px;font-weight:600;color:#2215CC;cursor:pointer">‹ {{ sel.sheet }}</div>
+              <div style="font-size:13px;font-weight:600">Observation {{ selNum }}</div>
+              <div onClick="{{ deleteSel }}" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#72004C;cursor:pointer">Delete</div>
+            </div>
+
+            <div style="flex:1;overflow-y:auto;padding:16px 16px 26px;display:flex;flex-direction:column;gap:18px">
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Photos</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                  <sc-for list="{{ selPhotos }}" as="ph" hint-placeholder-count="2">
+                    <div style="position:relative;aspect-ratio:3/4;border-radius:3px;overflow:hidden;background:#EDEAE3;border:1px solid #E7E4DD">
+                      <img src="{{ ph.url }}" alt="observation photo" style="width:100%;height:100%;object-fit:cover;display:block" />
+                      <div style="position:absolute;left:0;bottom:0;right:0;padding:3px 5px;background:rgba(0,0,0,.62);color:#fff;font-family:'Instrument Sans Cond';font-size:9px;letter-spacing:.06em">{{ ph.stamp }}</div>
+                      <div onClick="{{ ph.remove }}" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer">×</div>
+                    </div>
+                  </sc-for>
+                  <label style="aspect-ratio:3/4;border:1px dashed #C8C4BA;border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;background:#FAF9F6;font-family:'Instrument Sans Cond';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6b6963" style-hover="border-color:#2215CC;color:#2215CC">
+                    <div style="width:22px;height:16px;border:1.6px solid currentColor;border-radius:2px"></div>
+                    Camera
+                    <input type="file" accept="image/*" capture="environment" multiple onChange="{{ onPhoto }}" style="display:none" />
+                  </label>
+                </div>
+                <div style="font-size:11px;color:#8a8880;line-height:1.4">{{ stampNote }}</div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Description</div>
+                  <div onClick="{{ toggleMic }}" style="display:flex;align-items:center;gap:6px;font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid #E7E4DD;border-radius:2px;padding:5px 9px;cursor:pointer;color:{{ micColor }}">
+                    <span style="width:8px;height:8px;border-radius:50%;background:currentColor"></span>{{ micLabel }}
+                  </div>
+                </div>
+                <textarea value="{{ sel.desc }}" onChange="{{ onDesc }}" rows="4" placeholder="Talk or type what you're seeing…" style="width:100%;border:1px solid #E7E4DD;border-radius:3px;padding:10px;font-family:'Instrument Sans',sans-serif;font-size:13px;line-height:1.5;resize:vertical;color:#000;background:#fff"></textarea>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Discipline</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ disciplineOpts }}" as="d" hint-placeholder-count="4">
+                    <div onClick="{{ d.pick }}" style="font-size:12px;font-weight:500;padding:7px 11px;border-radius:999px;cursor:pointer;border:1px solid {{ d.border }};background:{{ d.bg }};color:{{ d.fg }}">{{ d.label }}</div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Status</div>
+                <div style="display:flex;gap:6px">
+                  <sc-for list="{{ statusOpts }}" as="st" hint-placeholder-count="3">
+                    <div onClick="{{ st.pick }}" style="flex:1;text-align:center;font-size:12px;font-weight:500;padding:8px 6px;border-radius:2px;cursor:pointer;border:1px solid {{ st.border }};background:{{ st.bg }};color:{{ st.fg }}">{{ st.label }}</div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="border:1px solid #E7E4DD;border-radius:3px;background:#FAF9F6;padding:12px;display:flex;flex-direction:column;gap:7px">
+                <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Captured automatically</div>
+                <div style="display:flex;justify-content:space-between;gap:12px;font-size:12px"><span style="color:#6b6963">Plan location</span><span style="font-weight:500;text-align:right">{{ selLoc }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px;font-size:12px"><span style="color:#6b6963">Taken</span><span style="font-weight:500;text-align:right">{{ selTaken }}</span></div>
+              </div>
+
+              <div onClick="{{ backToPlan }}" style="border-radius:4px;padding:13px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:#000;color:#fff;border:1px solid #000">Save to report</div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ showReport }}" hint-placeholder-val="{{ false }}">
+  <div class="om-report-pane" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;align-items:center">
+    <div class="om-report-actions" style="width:100%;max-width:860px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div onClick="{{ closeReport }}" style="font-size:13px;font-weight:600;color:#2215CC;cursor:pointer">‹ Back to capture</div>
+        <div style="font-size:13px;line-height:1.5;color:#5c5a54">{{ obsCount }} observations · built from your pins and photos</div>
+      </div>
+      <div onClick="{{ doPrint }}" style="font-family:'Instrument Sans Cond';font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;border:1px solid #000;border-radius:2px;padding:9px 16px;cursor:pointer;background:#fff" style-hover="background:#000;color:#fff">Print / PDF</div>
+    </div>
+
+    <div class="om-report-page" style="background:#fff;border:1px solid #E7E4DD;box-shadow:0 8px 30px rgba(0,0,0,.09);padding:56px 60px 64px;max-width:860px">
+
+      <div style="display:flex;flex-direction:column;gap:22px;border-bottom:2px solid #2215CC;padding-bottom:22px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <img src="logo.svg" alt="Champlin Studios" style="height:26px;width:auto;display:block" />
+            <div style="font-family:'Darker Grotesque',sans-serif;font-weight:700;font-size:44px;line-height:.95;letter-spacing:-.02em">{{ projectNumber }} — {{ projectName }}</div>
+            <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#2215CC;margin-top:2px">Site Field Report</div>
+          </div>
+          <div style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;text-align:right;white-space:nowrap">Page 1 of {{ pageCount }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px">
+          <div style="display:flex;flex-direction:column;gap:3px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Created</div><div style="font-size:13px;font-weight:500">{{ today }}</div></div>
+          <div style="display:flex;flex-direction:column;gap:3px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Prepared by</div><div style="font-size:13px;font-weight:500">{{ preparedBy }}</div></div>
+          <div style="display:flex;flex-direction:column;gap:3px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Observations</div><div style="font-size:13px;font-weight:500">{{ obsCount }}</div></div>
+          <div style="display:flex;flex-direction:column;gap:3px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Recipients</div><div style="font-size:13px;font-weight:500;line-height:1.4;word-break:break-word">{{ recipients }}</div></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ reportObs }}" as="o" hint-placeholder-count="3">
+          <div class="om-obs" style="padding:30px 0;border-bottom:1px solid #E7E4DD;display:flex;gap:24px">
+            <div style="flex:0 0 44px;font-family:'Darker Grotesque',sans-serif;font-weight:700;font-size:40px;line-height:.9;color:#2215CC">{{ o.num }}</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+                <div style="font-size:16px;font-weight:600;line-height:1.35;max-width:520px">{{ o.title }}</div>
+                <div style="display:flex;gap:6px;flex-shrink:0">
+                  <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid #E7E4DD;color:#6b6963">{{ o.discipline }}</div>
+                  <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid {{ o.statusBorder }};background:{{ o.statusBg }};color:{{ o.statusFg }}">{{ o.status }}</div>
+                </div>
+              </div>
+              <div style="font-size:13.5px;line-height:1.6;color:#3a3833;max-width:640px;text-wrap:pretty">{{ o.desc }}</div>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px 18px;border-top:1px solid #F0EEE8;padding-top:12px">
+                <div style="display:flex;flex-direction:column;gap:2px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Plan sheet</div><div style="font-size:12.5px;font-weight:500">{{ o.sheetLine }}</div></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Observed</div><div style="font-size:12.5px;font-weight:500">{{ o.taken }}</div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+                <sc-for list="{{ o.photos }}" as="ph" hint-placeholder-count="2">
+                  <div style="display:flex;flex-direction:column;gap:5px">
+                    <div style="aspect-ratio:4/3;background:#EDEAE3;border:1px solid #E7E4DD;overflow:hidden">
+                      <img src="{{ ph.url }}" alt="site photo" style="width:100%;height:100%;object-fit:cover;display:block" />
+                    </div>
+                    <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:500;letter-spacing:.06em;color:#8a8880">{{ ph.caption }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="padding-top:22px;display:flex;justify-content:space-between;gap:20px;font-family:'Instrument Sans Cond';font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#8a8880">
+        <span>Champlin Studios · Everything together</span>
+        <span>{{ projectNumber }} · {{ today }}</span>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;projectName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Emerson&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;projectNumber&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;24383&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;preparedBy&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;J. Landini, Champlin Studios&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;recipients&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;hvacca@praterengr.com&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const SHEETS = [
+  { id: 'A101', name: 'Level 1 — Floor Plan (Existing)', file: 'plans/A101.png', isPdf: false },
+  { id: 'A102', name: 'Level 2 — Floor Plan (Modified)', file: 'plans/A102.png', isPdf: false },
+  { id: 'A103', name: 'Level 3 — Floor Plan (Tenant)', file: 'plans/A103.png', isPdf: false }
+];
+const DISCIPLINES = ['Architectural', 'Electrical', 'Mechanical', 'Plumbing', 'Structural'];
+const STATUSES = [
+  { label: 'Open', fg: '#FA6500', bg: 'rgba(250,101,0,.08)', border: '#FA6500' },
+  { label: 'Resolved', fg: '#009B63', bg: 'rgba(0,155,99,.08)', border: '#009B63' },
+  { label: 'FYI', fg: '#6b6963', bg: '#FAF9F6', border: '#E7E4DD' }
+];
+const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="240" height="180" fill="#EDEAE3"/><text x="120" y="94" font-family="sans-serif" font-size="11" letter-spacing="1.5" fill="#9c9a93" text-anchor="middle">PHOTO PENDING</text></svg>');
+
+let uid = 100;
+
+class Component extends DCLogic {
+  state = {
+    view: 'app',
+    screen: 'plan',
+    sheetId: 'A103',
+    sheets: SHEETS.slice(),
+    selId: 3,
+    placing: false,
+    zoom: 1,
+    planImgs: {},
+    planHi: {},
+    planErr: {},
+    loading: {},
+    listening: false,
+    obs: [
+      { id: 1, sheet: 'A101', x: .34, y: .46, discipline: 'Electrical', status: 'Open', desc: 'Existing branch circuit conduit runs across the new ceiling grid layout at the corridor. Needs to be rerouted above the plenum before drywall closes in.', photos: [{ id: 11, url: PLACEHOLDER, taken: null, lat: null, lon: null }, { id: 12, url: PLACEHOLDER, taken: null, lat: null, lon: null }] },
+      { id: 2, sheet: 'A102', x: .61, y: .33, discipline: 'Mechanical', status: 'Open', desc: 'Return air duct drop conflicts with the header at the north wall. Coordination needed with structural before sheathing.', photos: [{ id: 21, url: PLACEHOLDER, taken: null, lat: null, lon: null }] },
+      { id: 3, sheet: 'A103', x: .45, y: .55, discipline: 'Architectural', status: 'FYI', desc: 'Level 3 tenant demo complete and clean. Slab is in good condition, no patching required at the former partition lines.', photos: [{ id: 31, url: PLACEHOLDER, taken: null, lat: null, lon: null }, { id: 32, url: PLACEHOLDER, taken: null, lat: null, lon: null }] }
+    ]
+  };
+
+  componentDidMount() {
+    import('./exif.js').then(m => { this.exif = m; });
+    import('./store.js').then(async (store) => {
+      this.store = store;
+      try {
+        const saved = await store.get('state');
+        if (saved) this.setState(this.rehydrate(saved), () => this.renderSheet(this.state.sheetId));
+        else this.renderSheet(this.state.sheetId);
+      } catch (e) { this.renderSheet(this.state.sheetId); }
+    }).catch(() => this.renderSheet(this.state.sheetId));
+  }
+
+  rehydrate(saved) {
+    const sheets = (saved.sheets || SHEETS).map(s => ({
+      ...s, file: s.blob ? URL.createObjectURL(s.blob) : s.file
+    }));
+    const obs = (saved.obs || []).map(o => ({
+      ...o,
+      photos: (o.photos || []).map(p => ({
+        ...p,
+        taken: p.taken ? new Date(p.taken) : null,
+        url: p.blob ? URL.createObjectURL(p.blob) : PLACEHOLDER
+      }))
+    }));
+    uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
+    return { sheets, obs, planImgs: saved.planImgs || {}, sheetId: saved.sheetId || this.state.sheetId, selId: obs.length ? obs[0].id : null };
+  }
+
+  maybeSave(st) {
+    if (!this.store) return;
+    const sig = [st.obs, st.sheets, st.planImgs, st.sheetId];
+    const prev = this._sig;
+    this._sig = sig;
+    if (prev && sig.every((v, i) => v === prev[i])) return;
+    clearTimeout(this._saveT);
+    this._saveT = setTimeout(() => this.persist(), 350);
+  }
+
+  persist() {
+    if (!this.store) return;
+    const st = this.state;
+    const payload = {
+      sheetId: st.sheetId,
+      planImgs: st.planImgs,
+      sheets: st.sheets.map(s => ({ id: s.id, name: s.name, isPdf: s.isPdf, blob: s.blob || null, file: s.blob ? null : s.file })),
+      obs: st.obs.map(o => ({
+        id: o.id, sheet: o.sheet, x: o.x, y: o.y, discipline: o.discipline, status: o.status, desc: o.desc,
+        photos: (o.photos || []).map(p => ({ id: p.id, taken: p.taken ? p.taken.toISOString() : null, blob: p.blob || null }))
+      }))
+    };
+    this.store.set('state', payload).catch(() => { });
+  }
+
+  resetAll = () => {
+    if (this.store) this.store.del('state').catch(() => { });
+    location.reload();
+  };
+
+  sheet(id) { return this.state.sheets.find(s => s.id === id); }
+
+  // Two-stage: a fast 1200px base paint so pins are usable at once, then a
+  // 2600px upgrade rendered only when the user zooms past 2x.
+  async renderSheet(id, hi) {
+    const s = this.sheet(id);
+    if (!s) return;
+    const busy = hi ? 'hi:' + id : id;
+    const have = hi ? this.state.planHi[id] : this.state.planImgs[id];
+    if (have || this.state.loading[busy]) return;
+    const isPdf = s.isPdf != null ? s.isPdf : /\.pdf$/i.test(s.file);
+    if (!isPdf) {
+      // Preload so a missing/blocked sheet surfaces the error state rather than a blank pane.
+      const im = new Image();
+      im.onload = () => this.setState(st => ({ planImgs: { ...st.planImgs, [id]: s.file } }));
+      im.onerror = () => this.setState(st => {
+        const imgs = { ...st.planImgs }; delete imgs[id];
+        return { planImgs: imgs, planErr: { ...st.planErr, [id]: 'missing' } };
+      });
+      im.src = s.file;
+      return;
+    }
+    this.setState(st => ({ loading: { ...st.loading, [busy]: true }, planErr: { ...st.planErr, [id]: false } }));
+    try {
+      const pdfjs = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+      this._docs = this._docs || {};
+      this._docs[id] = this._docs[id] || pdfjs.getDocument(s.file).promise;
+      const doc = await this._docs[id];
+      const page = await doc.getPage(1);
+      const target = hi ? 2600 : 1200;
+      let vp = page.getViewport({ scale: 1 });
+      vp = page.getViewport({ scale: Math.min(target / vp.width, target / vp.height) });
+      const c = document.createElement('canvas');
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      const url = c.toDataURL('image/jpeg', hi ? .9 : .85);
+      this.setState(st => (hi
+        ? { planHi: { ...st.planHi, [id]: url }, loading: { ...st.loading, [busy]: false } }
+        : { planImgs: { ...st.planImgs, [id]: url }, loading: { ...st.loading, [busy]: false } }));
+    } catch (e) {
+      this.setState(st => ({ loading: { ...st.loading, [busy]: false }, planErr: { ...st.planErr, [id]: !hi } }));
+    }
+  }
+
+  sel() { return this.state.obs.find(o => o.id === this.state.selId); }
+  num(o) { return this.state.obs.indexOf(o) + 1; }
+
+  patchSel(patch) {
+    this.setState(st => ({ obs: st.obs.map(o => o.id === st.selId ? { ...o, ...patch } : o) }));
+  }
+
+  stampOf(o) {
+    const p = (o.photos || []).find(p => p.lat != null || p.taken);
+    return p || null;
+  }
+
+  fmtTime(d) {
+    if (!d) return null;
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  gpsOf(o) {
+    const p = this.stampOf(o);
+    if (!p || p.lat == null) return '—';
+    return (this.exif && this.exif.fmtCoord(p.lat, p.lon)) || '—';
+  }
+
+  takenOf(o) {
+    const p = this.stampOf(o);
+    return (p && p.taken && this.fmtTime(p.taken)) || '—';
+  }
+
+  toggleMic = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { this.patchSel({ desc: (this.sel().desc || '') + ' [dictation unavailable in this browser]' }); return; }
+    if (this.state.listening && this.rec) { this.rec.stop(); return; }
+    const rec = new SR();
+    rec.continuous = true; rec.interimResults = false; rec.lang = 'en-US';
+    rec.onresult = e => {
+      let t = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+      const cur = this.sel().desc || '';
+      this.patchSel({ desc: (cur ? cur.replace(/\s*$/, ' ') : '') + t.trim() });
+    };
+    rec.onend = () => this.setState({ listening: false });
+    rec.onerror = () => this.setState({ listening: false });
+    this.rec = rec;
+    try { rec.start(); this.setState({ listening: true }); } catch (e) { }
+  };
+
+  onPhoto = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    for (const f of files) {
+      const url = URL.createObjectURL(f);
+      let meta = {};
+      try { meta = this.exif ? await this.exif.readExif(f) : {}; } catch (err) { }
+      const taken = (this.exif && this.exif.fmtExifDate(meta.taken)) || new Date(f.lastModified || Date.now());
+      const photo = { id: ++uid, url, blob: f, taken, lat: meta.lat ?? null, lon: meta.lon ?? null };
+      this.setState(st => ({
+        obs: st.obs.map(o => o.id === st.selId ? { ...o, photos: [...o.photos.filter(p => p.url !== PLACEHOLDER), photo] } : o)
+      }));
+    }
+  };
+
+  onSheetUpload = (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const id = f.name.replace(/\.(pdf|png|jpe?g)$/i, '').slice(0, 18);
+    const url = URL.createObjectURL(f);
+    const entry = { id, name: f.name, file: url, blob: f, isPdf: /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name) };
+    this.setState(st => ({ sheets: [...st.sheets, entry] }), () => {
+      this.renderSheet(id);
+      this.setState({ screen: 'plan', sheetId: id, placing: true });
+    });
+  };
+
+  onPlanClick = (e) => {
+    if (!this.state.placing) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+    const o = { id: ++uid, sheet: this.state.sheetId, x, y, discipline: 'Architectural', status: 'Open', desc: '', photos: [] };
+    this.setState(st => ({ obs: [...st.obs, o], selId: o.id, placing: false, screen: 'obs' }));
+  };
+
+  renderVals() {
+    const st = this.state;
+    this.maybeSave(st);
+    const sel = this.sel();
+    const sheet = this.sheet(st.sheetId);
+    const pins = st.obs.filter(o => o.sheet === st.sheetId).map(o => ({
+      num: this.num(o), left: (o.x * 100).toFixed(3) + '%', top: (o.y * 100).toFixed(3) + '%',
+      open: () => this.setState({ selId: o.id, screen: 'obs' })
+    }));
+    const selPhotos = sel ? sel.photos.map(p => ({
+      url: p.url,
+      stamp: p.url === PLACEHOLDER ? 'no metadata' : (p.taken ? this.fmtTime(p.taken) : 'no metadata'),
+      remove: () => this.patchSel({ photos: sel.photos.filter(q => q.id !== p.id) })
+    })) : [];
+
+    return {
+      projectName: this.props.projectName ?? 'Emerson',
+      projectNumber: this.props.projectNumber ?? '24383',
+      preparedBy: this.props.preparedBy ?? 'J. Landini, Champlin Studios',
+      recipients: this.props.recipients ?? 'hvacca@praterengr.com',
+      today: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+      pageCount: Math.max(1, Math.ceil(st.obs.length / 3)),
+
+      showApp: st.view !== 'report',
+      showReport: st.view === 'report',
+      openReport: () => this.setState({ view: 'report' }),
+      closeReport: () => this.setState({ view: 'app' }),
+      isSheets: st.screen === 'sheets', isPlan: st.screen === 'plan', isObs: st.screen === 'obs' && !!sel,
+      sheetId: st.sheetId, obsCount: st.obs.length,
+      goSheets: () => this.setState({ screen: 'sheets', placing: false }),
+      backToPlan: () => sel && this.setState({ screen: 'plan', sheetId: sel.sheet }),
+      deleteSel: () => this.setState(s => ({ obs: s.obs.filter(o => o.id !== s.selId), screen: 'plan' })),
+
+      sheetCards: st.sheets.map(s => ({
+        id: s.id, name: s.name,
+        countLabel: st.obs.filter(o => o.sheet === s.id).length + ' pinned',
+        open: () => { this.setState({ screen: 'plan', sheetId: s.id }); this.renderSheet(s.id); }
+      })),
+      onSheetUpload: this.onSheetUpload,
+      resetAll: this.resetAll,
+
+      planSrc: (st.zoom >= 3 && st.planHi[st.sheetId]) || st.planImgs[st.sheetId] || PLACEHOLDER,
+      planReady: !!st.planImgs[st.sheetId],
+      planBusy: !st.planImgs[st.sheetId] && !st.planErr[st.sheetId],
+      planFailed: !st.planImgs[st.sheetId] && !!st.planErr[st.sheetId],
+      sharpening: !!st.loading['hi:' + st.sheetId],
+      planErrMsg: st.planErr[st.sheetId] === 'missing'
+        ? 'This sheet image didn’t load. If you just deployed, the plans folder may not have been pushed with the app.'
+        : 'This sheet couldn’t be rendered. Heavy vector sheets sometimes time out.',
+      planErrPath: sheet ? String(sheet.file).slice(0, 90) : '',
+      retryPlan: () => {
+        delete this._docs?.[st.sheetId];
+        const sh = this.sheet(st.sheetId);
+        this.setState(s => ({ planErr: { ...s.planErr, [st.sheetId]: false } }), () => {
+          this.renderSheet(st.sheetId);
+        });
+      },
+      planWidth: (st.zoom * 100) + '%',
+      zoomLabel: st.zoom === 1 ? 'Fit' : st.zoom + '×',
+      toggleZoom: () => {
+        const z = st.zoom >= 5 ? 1 : st.zoom + 1;
+        this.setState({ zoom: z });
+        if (z >= 3) this.renderSheet(st.sheetId, true);
+      },
+      pins,
+      onPlanClick: this.onPlanClick,
+      placing: st.placing,
+      togglePlacing: () => this.setState(s => ({ placing: !s.placing })),
+      placeBtnLabel: st.placing ? 'Tap the plan to set the pin' : 'New observation here',
+      placeBtnBg: st.placing ? '#2215CC' : '#000',
+      placeBtnFg: '#fff',
+      planHint: st.placing
+        ? 'Pin lands where you tap — zoom in first for room-level accuracy.'
+        : (sheet ? sheet.name : '') + ' · ' + pins.length + ' observation' + (pins.length === 1 ? '' : 's') + ' on this sheet',
+
+      sel: sel || { desc: '', sheet: '' },
+      selNum: sel ? String(this.num(sel)).padStart(2, '0') : '',
+      selPhotos,
+      onPhoto: this.onPhoto,
+      onDesc: (e) => this.patchSel({ desc: e.target.value }),
+      toggleMic: this.toggleMic,
+      micLabel: st.listening ? 'Listening' : 'Dictate',
+      micColor: st.listening ? '#FA6500' : '#2215CC',
+      stampNote: 'Time is read from each photo\u2019s own metadata — nothing to fill in.',
+      disciplineOpts: DISCIPLINES.map(d => ({
+        label: d, pick: () => this.patchSel({ discipline: d }),
+        bg: sel && sel.discipline === d ? '#000' : '#fff',
+        fg: sel && sel.discipline === d ? '#fff' : '#3a3833',
+        border: sel && sel.discipline === d ? '#000' : '#E7E4DD'
+      })),
+      statusOpts: STATUSES.map(s => ({
+        label: s.label, pick: () => this.patchSel({ status: s.label }),
+        bg: sel && sel.status === s.label ? s.bg : '#fff',
+        fg: sel && sel.status === s.label ? s.fg : '#3a3833',
+        border: sel && sel.status === s.label ? s.border : '#E7E4DD'
+      })),
+      selLoc: sel ? sel.sheet + ' · x ' + (sel.x * 100).toFixed(1) + ' / y ' + (sel.y * 100).toFixed(1) : '—',
+      selGps: sel ? this.gpsOf(sel) : '—',
+      selTaken: sel ? this.takenOf(sel) : '—',
+
+      reportObs: st.obs.map((o, i) => {
+        const stt = STATUSES.find(s => s.label === o.status) || STATUSES[2];
+        const sh = this.sheet(o.sheet);
+        return {
+          num: String(i + 1).padStart(2, '0'),
+          title: (o.desc || 'Observation pending description').split(/[.\n]/)[0].slice(0, 90),
+          desc: o.desc || 'No description recorded yet.',
+          discipline: o.discipline, status: o.status,
+          statusBg: stt.bg, statusFg: stt.fg, statusBorder: stt.border,
+          sheetLine: o.sheet + (sh ? ' — ' + sh.name : ''),
+          gps: this.gpsOf(o), taken: this.takenOf(o),
+          photos: (o.photos.length ? o.photos : [{ id: 'x', url: PLACEHOLDER }]).map((p, j) => ({
+            url: p.url,
+            caption: String(i + 1) + '.' + (j + 1) + (p.taken ? ' · ' + p.taken.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
+          }))
+        };
+      }),
+      doPrint: () => window.print()
+    };
+  }
+}
+</script>
+</body>
+</html>

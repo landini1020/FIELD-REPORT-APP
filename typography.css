@@ -1,0 +1,27 @@
+:root{
+--font-display:"Darker Grotesque",sans-serif;
+--font-body:"Instrument Sans",sans-serif;
+--font-label:"Instrument Sans SemiCondensed","Instrument Sans",sans-serif;
+--font-eyebrow:"Instrument Sans Condensed","Instrument Sans",sans-serif;
+--display-2xl:clamp(56px,7vw,120px);/* @kind other */
+--display-xl:clamp(44px,5.5vw,88px);/* @kind other */
+--display-lg:clamp(36px,4vw,64px);/* @kind other */
+--display-md:clamp(28px,3vw,44px);/* @kind other */
+--heading-lg:32px;
+--heading-md:24px;
+--heading-sm:20px;
+--body-lg:18px;
+--body-md:16px;
+--body-sm:14px;
+--label-md:14px;
+--label-sm:12px;
+--eyebrow-md:13px;
+--lh-display:0.95;/* @kind other */
+--lh-heading:1.15;/* @kind other */
+--lh-body:1.55;/* @kind other */
+--lh-tight:1.25;/* @kind other */
+--tracking-tight:-0.02em;
+--tracking-normal:0em;
+--tracking-wide:0.08em;
+--tracking-wider:0.14em;
+}

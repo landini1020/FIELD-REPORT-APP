@@ -1,0 +1,65 @@
+:root{
+/* PRIMARY PALETTE — Brand Guide Q3 2026 */
+--cobalt:#2215CC;
+--white:#ffffff;
+--cream:#F4F1EA;
+--black:#000000;
+/* SECONDARY PALETTE — accents only, ≤5% of any composition */
+--olive:#7B7650;
+--sky:#AFCDF9;
+--spearmint:#009B63;
+--raspberry:#72004C;
+--tangerine:#FA6500;
+/* Cobalt ramp — #2215CC is the brand value at 500 */
+--blue-50:oklch(96% .02 274);
+--blue-100:oklch(91% .05 274);
+--blue-200:oklch(82% .1 274);
+--blue-300:oklch(68% .18 274);
+--blue-400:oklch(53% .25 274);
+--blue-500:#2215CC;
+--blue-600:oklch(33% .24 274);
+--blue-700:oklch(27% .19 274);
+--blue-800:oklch(20% .14 274);
+--blue-900:oklch(14% .09 274);
+--ink-black:#000000;
+/* Neutrals — warm-leaning to sit with Cream */
+--gray-50:#FAF9F6;
+--gray-100:oklch(95.5% .004 90);
+--gray-200:oklch(91% .006 90);
+--gray-300:oklch(83% .007 90);
+--gray-400:oklch(68% .008 90);
+--gray-500:oklch(54% .008 90);
+--gray-600:oklch(42% .007 90);
+--gray-700:oklch(31% .006 90);
+--gray-800:oklch(22% .005 90);
+--gray-900:oklch(13% .004 90);
+/* Semantic — drawn from the secondary palette */
+--success:var(--spearmint);
+--warning:var(--tangerine);
+--danger:var(--raspberry);
+--info:var(--cobalt);
+--color-brand:var(--cobalt);
+--color-brand-strong:var(--blue-600);
+--color-brand-soft:var(--blue-50);
+--bg-page:var(--white);
+--bg-surface:var(--white);
+--bg-sunken:var(--cream);
+--bg-inverse:var(--black);
+--bg-brand:var(--cobalt);
+--text-primary:var(--black);
+--text-secondary:var(--gray-600);
+--text-tertiary:var(--gray-500);
+--text-on-brand:var(--white);
+--text-on-inverse:var(--white);
+--text-on-cream:var(--black);
+--text-link:var(--cobalt);
+--text-link-hover:var(--blue-600);
+--border-subtle:var(--gray-200);
+--border-default:var(--gray-300);
+--border-strong:var(--gray-400);
+--border-brand:var(--cobalt);
+--surface-card:var(--white);
+--surface-card-border:var(--gray-200);
+--surface-hover:var(--cream);
+--focus-ring:var(--cobalt);
+}
