@@ -421,12 +421,12 @@ class Component extends DCLogic {
       }))
     }));
     uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
-    return { sheets, obs, planImgs: saved.planImgs || {}, sheetId: saved.sheetId || this.state.sheetId, selId: obs.length ? obs[0].id : null };
+    return { sheets, obs, sheetId: saved.sheetId || this.state.sheetId, selId: obs.length ? obs[0].id : null };
   }
 
   maybeSave(st) {
     if (!this.store) return;
-    const sig = [st.obs, st.sheets, st.planImgs, st.sheetId];
+    const sig = [st.obs, st.sheets, st.sheetId];
     const prev = this._sig;
     this._sig = sig;
     if (prev && sig.every((v, i) => v === prev[i])) return;
@@ -439,7 +439,9 @@ class Component extends DCLogic {
     const st = this.state;
     const payload = {
       sheetId: st.sheetId,
-      planImgs: st.planImgs,
+      // Rendered pages are deliberately not stored: they re-render from the
+      // PDF in a moment, and keeping dozens of them on device is the kind of
+      // storage pressure that gets the photos evicted.
       sheets: st.sheets.map(s => ({ id: s.id, name: s.name, isPdf: s.isPdf, page: s.page || 1, blob: s.blob || null, file: s.blob ? null : s.file })),
       obs: st.obs.map(o => ({
         id: o.id, sheet: o.sheet, x: o.x, y: o.y, discipline: o.discipline, status: o.status, desc: o.desc,
@@ -654,8 +656,23 @@ class Component extends DCLogic {
     return this._docs[url];
   }
 
-  // Two-stage: a fast 1200px base paint so pins are usable at once, then a
-  // 2600px upgrade rendered only when the user zooms past 2x.
+  async rasterize(page, target, quality) {
+    let vp = page.getViewport({ scale: 1 });
+    let scale = Math.min(target / vp.width, target / vp.height);
+    // Keep one canvas inside the mobile decode ceiling or Safari drops it.
+    const px = vp.width * scale * vp.height * scale;
+    if (px > this.MAXPX) scale *= Math.sqrt(this.MAXPX / px);
+    vp = page.getViewport({ scale });
+    const c = document.createElement('canvas');
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    return { url: c.toDataURL('image/jpeg', quality), w: c.width };
+  }
+
+  // Staged: a rough pass so the sheet appears at once, then a readable base,
+  // then sharper re-renders driven by how far the user has zoomed.
   async renderSheet(id, hi) {
     const s = this.sheet(id);
     if (!s) return null;
@@ -695,19 +712,14 @@ class Component extends DCLogic {
       // Keyed by file, not sheet, so every page of one upload shares a parse.
       const doc = await this.pdfDoc(s.file);
       const page = await doc.getPage(s.page || 1);
-      const target = want || 1200;
-      let vp = page.getViewport({ scale: 1 });
-      let scale = Math.min(target / vp.width, target / vp.height);
-      // Keep one canvas inside the mobile decode ceiling or Safari drops it.
-      const px = vp.width * scale * vp.height * scale;
-      if (px > this.MAXPX) scale *= Math.sqrt(this.MAXPX / px);
-      vp = page.getViewport({ scale });
-      const c = document.createElement('canvas');
-      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-      await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      const url = c.toDataURL('image/jpeg', hi ? .92 : .85);
+      if (!hi) {
+        // A heavy CAD sheet takes seconds at full size, so put a rough pass on
+        // screen first and let the readable one replace it a moment later.
+        const q = await this.rasterize(page, this.QUICKW, .6);
+        this.setState(st => ({ planImgs: { ...st.planImgs, [id]: q.url } }));
+      }
+      const out = await this.rasterize(page, want || 1200, hi ? .92 : .85);
+      const url = out.url, c = { width: out.w };
       this.setState(st => (hi
         ? { planHi: { ...st.planHi, [id]: url }, planHiW: { ...st.planHiW, [id]: c.width }, loading: { ...st.loading, [busy]: false } }
         : { planImgs: { ...st.planImgs, [id]: url }, loading: { ...st.loading, [busy]: false } }));
@@ -749,8 +761,15 @@ class Component extends DCLogic {
     return c.toDataURL('image/jpeg', .92);
   }
 
+  // Only sheets that were actually pinned. A plan set can run to dozens of
+  // pages and rendering every one of them at print size would take minutes
+  // and pad the report with blank plans nobody marked up.
+  reportSheetList() {
+    return this.state.sheets.filter(s => this.state.obs.some(o => o.sheet === s.id));
+  }
+
   compositeAll = async () => {
-    for (const s of this.state.sheets) {
+    for (const s of this.reportSheetList()) {
       try {
         let src = await this.renderSheet(s.id);
         if (!src) continue;
@@ -871,6 +890,7 @@ class Component extends DCLogic {
   MINZ = 1; MAXZ = 8;
   MAXW = 6000;          // widest single re-render of a vector sheet
   MAXPX = 16000000;     // iOS drops a canvas much past ~16MP
+  QUICKW = 700;         // rough first paint while the real one rasterises
   _ptrs = new Map();
   _view = { z: 1, tx: 0, ty: 0 };
 
@@ -967,7 +987,18 @@ class Component extends DCLogic {
     this._view = { z: 1, tx: 0, ty: 0 };
     this.setState({ sheetId: next.id, zoom: 1, tx: 0, ty: 0, placing: false }, () => {
       this.applyView();
-      this.renderSheet(next.id);
+      this.renderSheet(next.id).then(() => this.prefetchNeighbours());
+    });
+  }
+
+  // Paging a set is nearly always sequential, so have the next one ready.
+  prefetchNeighbours() {
+    const st = this.state;
+    const i = st.sheets.findIndex(s => s.id === st.sheetId);
+    if (i < 0) return;
+    [1, -1].forEach(d => {
+      const n = st.sheets[(i + d + st.sheets.length) % st.sheets.length];
+      if (n && n.id !== st.sheetId && !st.planImgs[n.id]) this.renderSheet(n.id);
     });
   }
 
@@ -1193,7 +1224,7 @@ class Component extends DCLogic {
           }))
         };
       }),
-      reportSheets: st.sheets.map(s => {
+      reportSheets: this.reportSheetList().map(s => {
         const n = st.obs.filter(o => o.sheet === s.id).length;
         return {
           id: s.id, name: s.name,
