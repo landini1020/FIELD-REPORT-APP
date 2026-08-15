@@ -42,8 +42,21 @@ Keep `.nojekyll` in the repo root — without it GitHub Pages hides files that s
 
 Push a new `index.html` and phones pick it up on the next launch — the app shell is fetched network-first. Only when you change **static assets** (plan images, fonts, the design-system bundle) bump `CACHE` in `sw.js` (`field-report-v3` → `v4`), since those are served cache-first for offline use.
 
+## Plan sheets
+
+Upload the **original PDF**, not an exported image. A PDF is vector, so the app
+re-renders it sharper as you zoom (up to ~4500px wide); an image can only ever
+show the pixels it was exported with. The bundled A101–A103 samples are 1500px
+images, which is why they go soft when magnified.
+
+A multi-page PDF is split into one sheet per page on upload, so a whole set
+loads at once and the `‹ ›` arrows in the plan header step through it.
+
+The renderer ships in `pdf/`, so PDFs open with no signal. If you bump the
+pdf.js version, replace those files and bump `CACHE` in `sw.js`.
+
 ## Known limits
 
-- Uploading a **PDF** plan sheet needs a network connection (the PDF renderer loads from a CDN) and is slow on heavy CAD sheets. Uploading **PNG/JPG** sheets works offline and instantly. The included A101/A102/A103 sheets are already converted to images.
-- Data lives only on that one phone — no sync, no sharing between devices. That's the line where this becomes a real build.
-- iOS may evict the stored photos if the device gets very low on space. Export the report the same day you walk the site.
+- Rendering a heavy CAD sheet the first time takes a few seconds, and again the first time you zoom past each detail step.
+- Data lives only on that one phone unless you use **Save** on the Sheets screen, which writes the whole walk to one file you can back up or open on another phone.
+- iOS may evict the stored photos if the device gets very low on space. Export the report, or Save a project file, the same day you walk the site.

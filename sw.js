@@ -1,8 +1,16 @@
-const CACHE = 'field-report-v3';
+const CACHE = 'field-report-v4';
 const CORE = ['./','index.html','support.js','exif.js','store.js','logo.svg','manifest.webmanifest',
 'icon-180.png','icon-192.png','icon-512.png',
 'plans/A101.png','plans/A102.png','plans/A103.png',
-'ds/_ds_bundle.js','ds/styles.css','ds/tokens/fonts.css','ds/tokens/colors.css','ds/tokens/typography.css','ds/tokens/spacing.css','ds/tokens/base.css'];
+'ds/_ds_bundle.js','ds/styles.css','ds/tokens/fonts.css','ds/tokens/colors.css','ds/tokens/typography.css','ds/tokens/spacing.css','ds/tokens/base.css',
+// The PDF renderer ships with the app so plan sets open with no signal.
+'pdf/pdf.min.mjs','pdf/pdf.worker.min.mjs',
+'pdf/standard_fonts/FoxitDingbats.pfb','pdf/standard_fonts/FoxitFixed.pfb','pdf/standard_fonts/FoxitFixedBold.pfb',
+'pdf/standard_fonts/FoxitFixedBoldItalic.pfb','pdf/standard_fonts/FoxitFixedItalic.pfb',
+'pdf/standard_fonts/FoxitSerif.pfb','pdf/standard_fonts/FoxitSerifBold.pfb','pdf/standard_fonts/FoxitSerifBoldItalic.pfb',
+'pdf/standard_fonts/FoxitSerifItalic.pfb','pdf/standard_fonts/FoxitSymbol.pfb',
+'pdf/standard_fonts/LiberationSans-Bold.ttf','pdf/standard_fonts/LiberationSans-BoldItalic.ttf',
+'pdf/standard_fonts/LiberationSans-Italic.ttf','pdf/standard_fonts/LiberationSans-Regular.ttf'];
 
 self.addEventListener('install', e => {
   // One missing file must not fail the whole install.

@@ -101,7 +101,10 @@ a:hover{color:#1a0fa0}
               <div onClick="{{ s.open }}" style="border:1px solid #E7E4DD;border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;background:#fff;transition:box-shadow 160ms,transform 160ms" style-hover="box-shadow:0 4px 14px rgba(0,0,0,.09);transform:translateY(-2px)">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
                   <div style="font-size:15px;font-weight:600">{{ s.id }}</div>
-                  <div style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#2215CC">{{ s.countLabel }}</div>
+                  <div style="display:flex;align-items:baseline;gap:10px">
+                    <div style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#2215CC">{{ s.countLabel }}</div>
+                    <div onClick="{{ s.remove }}" title="Remove this sheet" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#72004C;cursor:pointer">{{ s.removeLabel }}</div>
+                  </div>
                 </div>
                 <div style="font-size:12px;color:#6b6963;line-height:1.4">{{ s.name }}</div>
               </div>
@@ -367,6 +370,7 @@ class Component extends DCLogic {
     tx: 0,
     ty: 0,
     isFs: false,
+    confirmDel: null,
     planImgs: {},
     planHi: {},
     planHiW: {},
@@ -449,6 +453,41 @@ class Component extends DCLogic {
     if (this.store) this.store.del('state').catch(() => { });
     location.reload();
   };
+
+  // Two taps rather than a confirm dialog — removing a sheet takes its
+  // observations with it, and a dialog is easy to dismiss by reflex on site.
+  removeSheet(id, e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (this.state.confirmDel !== id) {
+      this.setState({ confirmDel: id });
+      clearTimeout(this._delT);
+      this._delT = setTimeout(() => this.setState({ confirmDel: null }), 4000);
+      return;
+    }
+    clearTimeout(this._delT);
+    const doomed = this.sheet(id);
+    const gone = this.state.obs.filter(o => o.sheet === id).length;
+    this.setState(st => {
+      const sheets = st.sheets.filter(s => s.id !== id);
+      const obs = st.obs.filter(o => o.sheet !== id);
+      const drop = (m) => { const c = { ...m }; delete c[id]; return c; };
+      // Only release the file once no remaining page still points at it.
+      if (doomed && doomed.blob && !sheets.some(s => s.file === doomed.file)) {
+        if (this._docs) delete this._docs[doomed.file];
+        try { URL.revokeObjectURL(doomed.file); } catch (err) { }
+      }
+      return {
+        sheets, obs, confirmDel: null,
+        planImgs: drop(st.planImgs), planHi: drop(st.planHi),
+        planHiW: drop(st.planHiW), planComposites: drop(st.planComposites),
+        sheetId: st.sheetId === id ? (sheets[0] ? sheets[0].id : '') : st.sheetId,
+        selId: obs.some(o => o.id === st.selId) ? st.selId : (obs[0] ? obs[0].id : null)
+      };
+    }, () => {
+      this.say('Removed ' + id + (gone ? ' and ' + gone + ' observation' + (gone === 1 ? '' : 's') : ''));
+      if (this.state.sheetId) this.renderSheet(this.state.sheetId);
+    });
+  }
 
   say(msg) {
     this.setState({ note: msg });
@@ -590,14 +629,29 @@ class Component extends DCLogic {
 
   sheet(id) { return this.state.sheets.find(s => s.id === id); }
 
+  // Bundled rather than pulled from a CDN: a plan set has to open on site
+  // with no signal, and the service worker cannot cache a cross-origin script.
   pdfjs() {
     if (!this._pdfjs) {
-      this._pdfjs = import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(m => {
-        m.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+      this._pdfjs = import('./pdf/pdf.min.mjs').then(m => {
+        m.GlobalWorkerOptions.workerSrc = './pdf/pdf.worker.min.mjs';
         return m;
       });
     }
     return this._pdfjs;
+  }
+
+  pdfDoc(url) {
+    this._docs = this._docs || {};
+    if (!this._docs[url]) {
+      this._docs[url] = this.pdfjs().then(m => m.getDocument({
+        url,
+        // Needed for sheets whose fonts are not embedded, which is common
+        // enough in CAD exports that leaving it out breaks text offline.
+        standardFontDataUrl: './pdf/standard_fonts/'
+      }).promise);
+    }
+    return this._docs[url];
   }
 
   // Two-stage: a fast 1200px base paint so pins are usable at once, then a
@@ -638,11 +692,8 @@ class Component extends DCLogic {
     }
     this.setState(st => ({ loading: { ...st.loading, [busy]: true }, planErr: { ...st.planErr, [id]: false } }));
     try {
-      const pdfjs = await this.pdfjs();
-      this._docs = this._docs || {};
       // Keyed by file, not sheet, so every page of one upload shares a parse.
-      this._docs[s.file] = this._docs[s.file] || pdfjs.getDocument(s.file).promise;
-      const doc = await this._docs[s.file];
+      const doc = await this.pdfDoc(s.file);
       const page = await doc.getPage(s.page || 1);
       const target = want || 1200;
       let vp = page.getViewport({ scale: 1 });
@@ -787,10 +838,7 @@ class Component extends DCLogic {
       // per page instead of stopping at page 1. They share the same blob.
       try {
         this.say('Reading sheet set…');
-        const pdfjs = await this.pdfjs();
-        this._docs = this._docs || {};
-        this._docs[url] = this._docs[url] || pdfjs.getDocument(url).promise;
-        const doc = await this._docs[url];
+        const doc = await this.pdfDoc(url);
         if (doc.numPages > 1) {
           entries = [];
           for (let n = 1; n <= doc.numPages; n++) {
@@ -1050,6 +1098,8 @@ class Component extends DCLogic {
       sheetCards: st.sheets.map(s => ({
         id: s.id, name: s.name,
         countLabel: st.obs.filter(o => o.sheet === s.id).length + ' pinned',
+        removeLabel: st.confirmDel === s.id ? 'Tap again' : 'Remove',
+        remove: (e) => this.removeSheet(s.id, e),
         open: () => {
           this._view = { z: 1, tx: 0, ty: 0 };
           this.setState({ screen: 'plan', sheetId: s.id, zoom: 1, tx: 0, ty: 0 });

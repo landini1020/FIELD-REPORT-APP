@@ -1,0 +1,7 @@
+# Vendored pdf.js build — keep byte-identical to the upstream release.
+pdf/** -text
+
+# Fonts and plan images are binary.
+*.ttf binary
+*.pfb binary
+*.png binary
