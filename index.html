@@ -50,6 +50,10 @@ a:hover{color:#1a0fa0}
   .om-report-pane{padding:16px!important;background:#F4F1EA!important;min-height:100vh}
   .om-report-page{padding:24px!important;max-width:none!important}
 }
+.om-plan-appendix{display:block}
+.om-plan-page{display:block;margin-top:30px;padding-top:26px;border-top:2px solid #2215CC}
+.om-plan-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:12px}
+.om-plan-page img{display:block;width:100%;height:auto;border:1px solid #E7E4DD;background:#fff}
 @media print{
   @page{margin:.5in}
   .om-capture-pane,.om-report-actions{display:none!important}
@@ -57,7 +61,8 @@ a:hover{color:#1a0fa0}
   .om-report-pane{gap:0!important}
   .om-report-page{max-width:none!important;border:0!important;box-shadow:none!important;padding:0!important}
   .om-obs{break-inside:avoid;page-break-inside:avoid}
-  .om-plan-page{break-before:page;page-break-before:always;break-inside:avoid}
+  .om-plan-page{break-before:page;page-break-before:always;break-inside:avoid;margin:0;padding-top:0;border-top:0}
+  .om-plan-page img{width:auto;max-width:100%;max-height:8.4in;margin:0 auto;border:0}
 }
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:4px}
@@ -106,8 +111,23 @@ a:hover{color:#1a0fa0}
                 Upload plan PDF or image
                 <input type="file" accept="application/pdf,image/*" onChange="{{ onSheetUpload }}" style="display:none" />
               </label>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px">
-                <div style="font-size:11px;color:#8a8880;line-height:1.4">Saved on this device — pins and photos survive a reload.</div>
+            </div>
+
+            <div style="margin-top:2px;border-top:1px solid #E7E4DD;padding-top:14px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Project file</div>
+              <div style="display:flex;gap:8px">
+                <div onClick="{{ saveProject }}" style="flex:1;border:1px solid #000;border-radius:4px;padding:11px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;background:#000;color:#fff">Save</div>
+                <label style="flex:1;border:1px solid #000;border-radius:4px;padding:11px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#000">
+                  Load
+                  <input type="file" accept=".json,application/json" onChange="{{ onProjectLoad }}" style="display:none" />
+                </label>
+              </div>
+              <sc-if value="{{ hasNote }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px;line-height:1.4;color:#2215CC;font-weight:500">{{ note }}</div>
+              </sc-if>
+              <div style="font-size:11px;color:#8a8880;line-height:1.4">Save writes one file with every sheet, pin and photo — keep it as a backup or open it on another phone.</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:6px;border-top:1px solid #F0EEE8;margin-top:2px">
+                <div style="font-size:11px;color:#8a8880;line-height:1.4">Also saved on this device automatically.</div>
                 <div onClick="{{ resetAll }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer;white-space:nowrap">Reset</div>
               </div>
             </div>
@@ -290,22 +310,14 @@ a:hover{color:#1a0fa0}
         </sc-for>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:28px">
+      <div class="om-plan-appendix">
         <sc-for list="{{ reportSheets }}" as="sh" hint-placeholder-count="0">
-          <div class="om-plan-page" style="padding-top:28px;border-top:2px solid #2215CC;display:flex;flex-direction:column;gap:14px">
-            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">
+          <div class="om-plan-page">
+            <div class="om-plan-head">
               <div style="font-family:'Darker Grotesque',sans-serif;font-weight:700;font-size:28px;line-height:1;letter-spacing:-.01em">{{ sh.id }} — {{ sh.name }}</div>
               <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;white-space:nowrap">{{ sh.countLabel }}</div>
             </div>
-            <div style="position:relative;border:1px solid #E7E4DD;background:#fff">
-              <img src="{{ sh.src }}" alt="{{ sh.id }} plan sheet" style="display:block;width:100%;height:auto" />
-              <sc-for list="{{ sh.pins }}" as="p" hint-placeholder-count="0">
-                <div style="position:absolute;left:{{ p.left }};top:{{ p.top }};transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">
-                  <div style="width:24px;height:24px;border-radius:50%;background:#2215CC;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">{{ p.num }}</div>
-                  <div style="width:2px;height:8px;background:#2215CC"></div>
-                </div>
-              </sc-for>
-            </div>
+            <img src="{{ sh.src }}" alt="{{ sh.id }} plan sheet" />
           </div>
         </sc-for>
       </div>
@@ -348,6 +360,8 @@ class Component extends DCLogic {
     planImgs: {},
     planHi: {},
     planErr: {},
+    planComposites: {},
+    note: '',
     loading: {},
     listening: false,
     obs: [
@@ -415,27 +429,152 @@ class Component extends DCLogic {
     location.reload();
   };
 
+  say(msg) {
+    this.setState({ note: msg });
+    clearTimeout(this._noteT);
+    this._noteT = setTimeout(() => this.setState({ note: '' }), 5000);
+  }
+
+  toDataUrl(blob) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(r.error);
+      r.readAsDataURL(blob);
+    });
+  }
+
+  // A whole-project file so a walk can be backed up off the phone, moved to
+  // another device, or reopened after iOS evicts the on-device photos.
+  saveProject = async () => {
+    try {
+      this.say('Packing project…');
+      const st = this.state;
+      const sheets = await Promise.all(st.sheets.map(async s => ({
+        id: s.id, name: s.name, isPdf: s.isPdf,
+        file: s.blob ? null : s.file,
+        data: s.blob ? await this.toDataUrl(s.blob) : null
+      })));
+      const obs = await Promise.all(st.obs.map(async o => ({
+        id: o.id, sheet: o.sheet, x: o.x, y: o.y,
+        discipline: o.discipline, status: o.status, desc: o.desc,
+        photos: await Promise.all((o.photos || []).map(async p => ({
+          id: p.id, taken: p.taken ? p.taken.toISOString() : null,
+          lat: p.lat ?? null, lon: p.lon ?? null,
+          data: p.blob ? await this.toDataUrl(p.blob) : null
+        })))
+      })));
+      const num = this.props.projectNumber ?? '24383';
+      const payload = {
+        app: 'champlin-field-report', version: 1,
+        savedAt: new Date().toISOString(),
+        projectNumber: num, projectName: this.props.projectName ?? 'Emerson',
+        sheetId: st.sheetId, sheets, obs
+      };
+      const stamp = new Date().toISOString().slice(0, 10);
+      const name = num + '-field-report-' + stamp + '.json';
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      const mb = (blob.size / 1048576).toFixed(1);
+      try {
+        const file = new File([blob], name, { type: 'application/json' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: name });
+          this.say('Saved ' + name + ' (' + mb + ' MB)');
+          return;
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') { this.say(''); return; }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 8000);
+      this.say('Saved ' + name + ' (' + mb + ' MB)');
+    } catch (e) {
+      this.say('Could not save the project file.');
+    }
+  };
+
+  onProjectLoad = async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      this.say('Opening project…');
+      const data = JSON.parse(await f.text());
+      if (!data || data.app !== 'champlin-field-report' || !Array.isArray(data.obs)) {
+        this.say('That is not a Field Report project file.');
+        return;
+      }
+      const toBlob = async (u) => u ? await (await fetch(u)).blob() : null;
+      const sheets = await Promise.all((data.sheets || []).map(async s => {
+        const blob = await toBlob(s.data);
+        return {
+          id: s.id, name: s.name, isPdf: s.isPdf,
+          blob: blob || null,
+          file: blob ? URL.createObjectURL(blob) : s.file
+        };
+      }));
+      const obs = await Promise.all(data.obs.map(async o => ({
+        id: o.id, sheet: o.sheet, x: o.x, y: o.y,
+        discipline: o.discipline, status: o.status, desc: o.desc,
+        photos: await Promise.all((o.photos || []).map(async p => {
+          const blob = await toBlob(p.data);
+          return {
+            id: p.id, blob: blob || null,
+            url: blob ? URL.createObjectURL(blob) : PLACEHOLDER,
+            taken: p.taken ? new Date(p.taken) : null,
+            lat: p.lat ?? null, lon: p.lon ?? null
+          };
+        }))
+      })));
+      uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
+      const sheetId = sheets.some(s => s.id === data.sheetId) ? data.sheetId : (sheets[0] && sheets[0].id);
+      this.setState({
+        sheets: sheets.length ? sheets : SHEETS.slice(),
+        obs, sheetId,
+        selId: obs.length ? obs[0].id : null,
+        screen: 'sheets', view: 'app', placing: false, zoom: 1,
+        planImgs: {}, planHi: {}, planErr: {}, planComposites: {}, loading: {}
+      }, () => {
+        this.renderSheet(this.state.sheetId);
+        this.say('Loaded ' + obs.length + ' observation' + (obs.length === 1 ? '' : 's') + ' from ' + f.name);
+      });
+    } catch (err) {
+      this.say('Could not read that file.');
+    }
+  };
+
   sheet(id) { return this.state.sheets.find(s => s.id === id); }
 
   // Two-stage: a fast 1200px base paint so pins are usable at once, then a
   // 2600px upgrade rendered only when the user zooms past 2x.
   async renderSheet(id, hi) {
     const s = this.sheet(id);
-    if (!s) return;
+    if (!s) return null;
     const busy = hi ? 'hi:' + id : id;
     const have = hi ? this.state.planHi[id] : this.state.planImgs[id];
-    if (have || this.state.loading[busy]) return;
+    if (have) return have;
+    if (this.state.loading[busy]) return null;
     const isPdf = s.isPdf != null ? s.isPdf : /\.pdf$/i.test(s.file);
     if (!isPdf) {
       // Preload so a missing/blocked sheet surfaces the error state rather than a blank pane.
-      const im = new Image();
-      im.onload = () => this.setState(st => ({ planImgs: { ...st.planImgs, [id]: s.file } }));
-      im.onerror = () => this.setState(st => {
-        const imgs = { ...st.planImgs }; delete imgs[id];
-        return { planImgs: imgs, planErr: { ...st.planErr, [id]: 'missing' } };
+      return new Promise(res => {
+        const im = new Image();
+        im.onload = () => {
+          this.setState(st => ({ planImgs: { ...st.planImgs, [id]: s.file } }));
+          res(s.file);
+        };
+        im.onerror = () => {
+          this.setState(st => {
+            const imgs = { ...st.planImgs }; delete imgs[id];
+            return { planImgs: imgs, planErr: { ...st.planErr, [id]: 'missing' } };
+          });
+          res(null);
+        };
+        im.src = s.file;
       });
-      im.src = s.file;
-      return;
     }
     this.setState(st => ({ loading: { ...st.loading, [busy]: true }, planErr: { ...st.planErr, [id]: false } }));
     try {
@@ -457,10 +596,54 @@ class Component extends DCLogic {
       this.setState(st => (hi
         ? { planHi: { ...st.planHi, [id]: url }, loading: { ...st.loading, [busy]: false } }
         : { planImgs: { ...st.planImgs, [id]: url }, loading: { ...st.loading, [busy]: false } }));
+      return url;
     } catch (e) {
       this.setState(st => ({ loading: { ...st.loading, [busy]: false }, planErr: { ...st.planErr, [id]: !hi } }));
+      return null;
     }
   }
+
+  // The report prints the pins burned into the sheet image rather than as
+  // positioned overlays — Safari's print engine drops absolutely positioned
+  // children, which is why pinned sheets came out blank in the PDF.
+  async compositeSheet(id, src) {
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i); i.onerror = rej;
+      i.src = src;
+    });
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth || img.width;
+    c.height = img.naturalHeight || img.height;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0);
+    const r = Math.min(46, Math.max(11, Math.round(c.width * .013)));
+    const stem = Math.round(r * .7), lw = Math.max(2, r * .16);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 ' + Math.round(r * 1.05) + 'px "Instrument Sans", system-ui, sans-serif';
+    this.state.obs.filter(o => o.sheet === id).forEach(o => {
+      const x = o.x * c.width, y = o.y * c.height, cy = y - stem - r;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, cy);
+      ctx.strokeStyle = '#2215CC'; ctx.lineWidth = lw; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#2215CC'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = lw; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.fillText(String(this.num(o)), x, cy);
+    });
+    return c.toDataURL('image/jpeg', .92);
+  }
+
+  compositeAll = async () => {
+    for (const s of this.state.sheets) {
+      try {
+        const src = await this.renderSheet(s.id);
+        if (!src) continue;
+        const out = await this.compositeSheet(s.id, src);
+        if (out) this.setState(st => ({ planComposites: { ...st.planComposites, [s.id]: out } }));
+      } catch (e) { }
+    }
+  };
 
   sel() { return this.state.obs.find(o => o.id === this.state.selId); }
   num(o) { return this.state.obs.indexOf(o) + 1; }
@@ -571,8 +754,8 @@ class Component extends DCLogic {
       showApp: st.view !== 'report',
       showReport: st.view === 'report',
       openReport: () => {
-        st.sheets.forEach(s => this.renderSheet(s.id));
-        this.setState({ view: 'report' });
+        // Rebuild from scratch so pins added since the last export are on the sheets.
+        this.setState({ view: 'report', planComposites: {} }, () => this.compositeAll());
       },
       closeReport: () => this.setState({ view: 'app' }),
       isSheets: st.screen === 'sheets', isPlan: st.screen === 'plan', isObs: st.screen === 'obs' && !!sel,
@@ -588,6 +771,9 @@ class Component extends DCLogic {
       })),
       onSheetUpload: this.onSheetUpload,
       resetAll: this.resetAll,
+      saveProject: this.saveProject,
+      onProjectLoad: this.onProjectLoad,
+      note: st.note, hasNote: !!st.note,
 
       planSrc: (st.zoom >= 3 && st.planHi[st.sheetId]) || st.planImgs[st.sheetId] || PLACEHOLDER,
       planReady: !!st.planImgs[st.sheetId],
@@ -666,14 +852,11 @@ class Component extends DCLogic {
         };
       }),
       reportSheets: st.sheets.map(s => {
-        const sPins = st.obs.filter(o => o.sheet === s.id).map(o => ({
-          num: this.num(o), left: (o.x * 100).toFixed(3) + '%', top: (o.y * 100).toFixed(3) + '%'
-        }));
+        const n = st.obs.filter(o => o.sheet === s.id).length;
         return {
           id: s.id, name: s.name,
-          src: st.planImgs[s.id] || PLACEHOLDER,
-          pins: sPins,
-          countLabel: sPins.length + ' observation' + (sPins.length === 1 ? '' : 's')
+          src: st.planComposites[s.id] || st.planImgs[s.id] || PLACEHOLDER,
+          countLabel: n + ' observation' + (n === 1 ? '' : 's')
         };
       }),
       doPrint: () => window.print()
