@@ -50,6 +50,7 @@ a:hover{color:#1a0fa0}
   .om-report-pane{padding:16px!important;background:#F4F1EA!important;min-height:100vh}
   .om-report-page{padding:24px!important;max-width:none!important}
 }
+.om-plan-pane:fullscreen,.om-plan-pane:-webkit-full-screen{width:100vw;height:100vh;background:#fff}
 .om-plan-appendix{display:block}
 .om-plan-page{display:block;margin-top:30px;padding-top:26px;border-top:2px solid #2215CC}
 .om-plan-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:12px}
@@ -135,7 +136,7 @@ a:hover{color:#1a0fa0}
         </sc-if>
 
         <sc-if value="{{ isPlan }}" hint-placeholder-val="{{ false }}">
-          <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+          <div class="om-plan-pane" style="flex:1;display:flex;flex-direction:column;min-height:0;background:#fff">
             <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid #E7E4DD">
               <div onClick="{{ goSheets }}" style="font-size:13px;font-weight:600;color:#2215CC;cursor:pointer;padding:4px 2px">‹ Sheets</div>
               <div style="font-size:13px;font-weight:600">{{ sheetId }}</div>
@@ -143,6 +144,9 @@ a:hover{color:#1a0fa0}
                 <div onClick="{{ prevSheet }}" title="Previous sheet" style="font-size:15px;font-weight:600;line-height:1;border:1px solid #E7E4DD;border-radius:2px;padding:4px 9px 6px;cursor:pointer;color:#2215CC">‹</div>
                 <div onClick="{{ nextSheet }}" title="Next sheet" style="font-size:15px;font-weight:600;line-height:1;border:1px solid #E7E4DD;border-radius:2px;padding:4px 9px 6px;cursor:pointer;color:#2215CC">›</div>
                 <div onClick="{{ resetView }}" title="Reset to fit" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid #E7E4DD;border-radius:2px;padding:5px 8px;cursor:pointer;min-width:44px;text-align:center">{{ zoomLabel }}</div>
+                <sc-if value="{{ canFullscreen }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ toggleFullscreen }}" title="{{ fsTitle }}" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid #E7E4DD;border-radius:2px;padding:5px 8px;cursor:pointer;text-align:center">{{ fsLabel }}</div>
+                </sc-if>
               </div>
             </div>
 
@@ -362,6 +366,7 @@ class Component extends DCLogic {
     zoom: 1,
     tx: 0,
     ty: 0,
+    isFs: false,
     planImgs: {},
     planHi: {},
     planErr: {},
@@ -388,10 +393,14 @@ class Component extends DCLogic {
     }).catch(() => this.renderSheet(this.state.sheetId));
     // Non-passive so the plan can swallow the page zoom/scroll on a trackpad.
     document.addEventListener('wheel', this.onPlanWheel, { passive: false });
+    document.addEventListener('fullscreenchange', this.onFsChange);
+    document.addEventListener('webkitfullscreenchange', this.onFsChange);
   }
 
   componentWillUnmount() {
     document.removeEventListener('wheel', this.onPlanWheel);
+    document.removeEventListener('fullscreenchange', this.onFsChange);
+    document.removeEventListener('webkitfullscreenchange', this.onFsChange);
   }
 
   rehydrate(saved) {
@@ -787,6 +796,29 @@ class Component extends DCLogic {
     this.setState({ zoom: 1, tx: 0, ty: 0 });
   };
 
+  // Desktop only — iOS Safari has no element fullscreen, so the control is
+  // hidden there rather than offering a button that does nothing.
+  toggleFullscreen = (e) => {
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsEl) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      return;
+    }
+    const pane = e && e.currentTarget && e.currentTarget.closest('.om-plan-pane');
+    if (!pane) return;
+    const req = pane.requestFullscreen || pane.webkitRequestFullscreen;
+    if (req) req.call(pane);
+  };
+
+  onFsChange = () => {
+    // The surface changes size, so any pan/zoom would be off — start clean.
+    this._view = { z: 1, tx: 0, ty: 0 };
+    this.setState({
+      isFs: !!(document.fullscreenElement || document.webkitFullscreenElement),
+      zoom: 1, tx: 0, ty: 0
+    }, () => this.applyView());
+  };
+
   stepSheet(dir) {
     const st = this.state;
     const i = st.sheets.findIndex(s => s.id === st.sheetId);
@@ -801,9 +833,14 @@ class Component extends DCLogic {
 
   onPtrDown = (e) => {
     this._surf = e.currentTarget;
-    this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
+    // Only sync from state when a gesture actually begins. Re-reading it when
+    // a second finger lands would throw away the pan already in progress.
+    if (this._ptrs.size === 0) {
+      if (this._wheelT) { clearTimeout(this._wheelT); this._wheelT = null; }
+      else this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
+      this._moved = 0;
+    }
     this._ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (this._ptrs.size === 1) this._moved = 0;
     if (this._ptrs.size === 2) {
       const [a, b] = [...this._ptrs.values()];
       this._pinch = {
@@ -853,11 +890,16 @@ class Component extends DCLogic {
     if (!surf) return;
     e.preventDefault();
     this._surf = surf;
-    this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
+    // A trackpad pinch arrives as a stream of wheel events and state is only
+    // committed once the stream stops, so sync from state on the first event
+    // of a run only — re-reading it every tick would undo the zoom each time.
+    if (this._wheelT) clearTimeout(this._wheelT);
+    else this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
     const r = surf.getBoundingClientRect();
-    this.zoomAt(e.clientX - r.left, e.clientY - r.top, this._view.z * Math.exp(-e.deltaY * .0018));
-    clearTimeout(this._wheelT);
-    this._wheelT = setTimeout(() => this.commitView(false), 140);
+    // Ctrl+wheel is what a trackpad pinch sends; give it a stronger response.
+    const k = e.ctrlKey ? .01 : .0018;
+    this.zoomAt(e.clientX - r.left, e.clientY - r.top, this._view.z * Math.exp(-e.deltaY * k));
+    this._wheelT = setTimeout(() => { this._wheelT = null; this.commitView(false); }, 140);
   };
 
   handleTap(e) {
@@ -950,6 +992,10 @@ class Component extends DCLogic {
       resetView: this.resetView,
       prevSheet: () => this.stepSheet(-1),
       nextSheet: () => this.stepSheet(1),
+      canFullscreen: !!(document.fullscreenEnabled || document.webkitFullscreenEnabled),
+      toggleFullscreen: this.toggleFullscreen,
+      fsLabel: st.isFs ? 'Exit' : 'Full',
+      fsTitle: st.isFs ? 'Exit full screen' : 'Full screen',
       pins,
       onPtrDown: this.onPtrDown,
       onPtrMove: this.onPtrMove,
