@@ -139,15 +139,19 @@ a:hover{color:#1a0fa0}
             <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid #E7E4DD">
               <div onClick="{{ goSheets }}" style="font-size:13px;font-weight:600;color:#2215CC;cursor:pointer;padding:4px 2px">‹ Sheets</div>
               <div style="font-size:13px;font-weight:600">{{ sheetId }}</div>
-              <div onClick="{{ toggleZoom }}" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid #E7E4DD;border-radius:2px;padding:5px 8px;cursor:pointer">{{ zoomLabel }}</div>
+              <div style="display:flex;align-items:center;gap:5px">
+                <div onClick="{{ prevSheet }}" title="Previous sheet" style="font-size:15px;font-weight:600;line-height:1;border:1px solid #E7E4DD;border-radius:2px;padding:4px 9px 6px;cursor:pointer;color:#2215CC">‹</div>
+                <div onClick="{{ nextSheet }}" title="Next sheet" style="font-size:15px;font-weight:600;line-height:1;border:1px solid #E7E4DD;border-radius:2px;padding:4px 9px 6px;cursor:pointer;color:#2215CC">›</div>
+                <div onClick="{{ resetView }}" title="Reset to fit" style="font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid #E7E4DD;border-radius:2px;padding:5px 8px;cursor:pointer;min-width:44px;text-align:center">{{ zoomLabel }}</div>
+              </div>
             </div>
 
-            <div style="flex:1;overflow:auto;background:#EDEAE3;position:relative;touch-action:pinch-zoom pan-x pan-y">
+            <div class="om-plan-surface" onPointerDown="{{ onPtrDown }}" onPointerMove="{{ onPtrMove }}" onPointerUp="{{ onPtrUp }}" onPointerCancel="{{ onPtrUp }}" style="flex:1;overflow:hidden;background:#EDEAE3;position:relative;touch-action:none;user-select:none;-webkit-user-select:none;cursor:{{ planCursor }}">
               <sc-if value="{{ planReady }}" hint-placeholder-val="{{ true }}">
-                <div onClick="{{ onPlanClick }}" style="position:relative;width:{{ planWidth }};min-width:100%">
-                  <img src="{{ planSrc }}" alt="plan sheet" style="display:block;width:100%;height:auto;background:#fff" />
+                <div class="om-plan-canvas" style="position:absolute;left:0;top:0;width:100%;transform-origin:0 0;transform:{{ planTransform }};will-change:transform">
+                  <img src="{{ planSrc }}" alt="plan sheet" draggable="false" style="display:block;width:100%;height:auto;background:#fff;pointer-events:none;-webkit-user-drag:none" />
                   <sc-for list="{{ pins }}" as="p" hint-placeholder-count="0">
-                    <div onClick="{{ p.open }}" style="position:absolute;left:{{ p.left }};top:{{ p.top }};transform:translate(-50%,-100%);cursor:pointer;display:flex;flex-direction:column;align-items:center">
+                    <div data-pin="1" style="position:absolute;left:{{ p.left }};top:{{ p.top }};transform:translate(-50%,-100%) scale({{ p.inv }});transform-origin:50% 100%;pointer-events:none;display:flex;flex-direction:column;align-items:center">
                       <div style="width:28px;height:28px;border-radius:50%;background:#2215CC;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">{{ p.num }}</div>
                       <div style="width:2px;height:9px;background:#2215CC"></div>
                     </div>
@@ -295,16 +299,18 @@ a:hover{color:#1a0fa0}
                 <div style="display:flex;flex-direction:column;gap:2px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Plan sheet</div><div style="font-size:12.5px;font-weight:500">{{ o.sheetLine }}</div></div>
                 <div style="display:flex;flex-direction:column;gap:2px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Observed</div><div style="font-size:12.5px;font-weight:500">{{ o.taken }}</div></div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
-                <sc-for list="{{ o.photos }}" as="ph" hint-placeholder-count="2">
-                  <div style="display:flex;flex-direction:column;gap:5px">
-                    <div style="aspect-ratio:4/3;background:#EDEAE3;border:1px solid #E7E4DD;overflow:hidden">
-                      <img src="{{ ph.url }}" alt="site photo" style="width:100%;height:100%;object-fit:cover;display:block" />
+              <sc-if value="{{ o.hasPhotos }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+                  <sc-for list="{{ o.photos }}" as="ph" hint-placeholder-count="2">
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <div style="aspect-ratio:4/3;background:#EDEAE3;border:1px solid #E7E4DD;overflow:hidden">
+                        <img src="{{ ph.url }}" alt="site photo" style="width:100%;height:100%;object-fit:cover;display:block" />
+                      </div>
+                      <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:500;letter-spacing:.06em;color:#8a8880">{{ ph.caption }}</div>
                     </div>
-                    <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:500;letter-spacing:.06em;color:#8a8880">{{ ph.caption }}</div>
-                  </div>
-                </sc-for>
-              </div>
+                  </sc-for>
+                </div>
+              </sc-if>
             </div>
           </div>
         </sc-for>
@@ -323,7 +329,7 @@ a:hover{color:#1a0fa0}
       </div>
 
       <div style="padding-top:22px;display:flex;justify-content:space-between;gap:20px;font-family:'Instrument Sans Cond';font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#8a8880">
-        <span>Champlin Studios · Everything together</span>
+        <span>Champlin Studios</span>
         <span>{{ projectNumber }} · {{ today }}</span>
       </div>
     </div>
@@ -343,9 +349,6 @@ const STATUSES = [
   { label: 'Resolved', fg: '#009B63', bg: 'rgba(0,155,99,.08)', border: '#009B63' },
   { label: 'FYI', fg: '#6b6963', bg: '#FAF9F6', border: '#E7E4DD' }
 ];
-const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="240" height="180" fill="#EDEAE3"/><text x="120" y="94" font-family="sans-serif" font-size="11" letter-spacing="1.5" fill="#9c9a93" text-anchor="middle">PHOTO PENDING</text></svg>');
-
 let uid = 100;
 
 class Component extends DCLogic {
@@ -357,6 +360,8 @@ class Component extends DCLogic {
     selId: 3,
     placing: false,
     zoom: 1,
+    tx: 0,
+    ty: 0,
     planImgs: {},
     planHi: {},
     planErr: {},
@@ -365,9 +370,9 @@ class Component extends DCLogic {
     loading: {},
     listening: false,
     obs: [
-      { id: 1, sheet: 'A101', x: .34, y: .46, discipline: 'Electrical', status: 'Open', desc: 'Existing branch circuit conduit runs across the new ceiling grid layout at the corridor. Needs to be rerouted above the plenum before drywall closes in.', photos: [{ id: 11, url: PLACEHOLDER, taken: null, lat: null, lon: null }, { id: 12, url: PLACEHOLDER, taken: null, lat: null, lon: null }] },
-      { id: 2, sheet: 'A102', x: .61, y: .33, discipline: 'Mechanical', status: 'Open', desc: 'Return air duct drop conflicts with the header at the north wall. Coordination needed with structural before sheathing.', photos: [{ id: 21, url: PLACEHOLDER, taken: null, lat: null, lon: null }] },
-      { id: 3, sheet: 'A103', x: .45, y: .55, discipline: 'Architectural', status: 'FYI', desc: 'Level 3 tenant demo complete and clean. Slab is in good condition, no patching required at the former partition lines.', photos: [{ id: 31, url: PLACEHOLDER, taken: null, lat: null, lon: null }, { id: 32, url: PLACEHOLDER, taken: null, lat: null, lon: null }] }
+      { id: 1, sheet: 'A101', x: .34, y: .46, discipline: 'Electrical', status: 'Open', desc: 'Existing branch circuit conduit runs across the new ceiling grid layout at the corridor. Needs to be rerouted above the plenum before drywall closes in.', photos: [] },
+      { id: 2, sheet: 'A102', x: .61, y: .33, discipline: 'Mechanical', status: 'Open', desc: 'Return air duct drop conflicts with the header at the north wall. Coordination needed with structural before sheathing.', photos: [] },
+      { id: 3, sheet: 'A103', x: .45, y: .55, discipline: 'Architectural', status: 'FYI', desc: 'Level 3 tenant demo complete and clean. Slab is in good condition, no patching required at the former partition lines.', photos: [] }
     ]
   };
 
@@ -381,6 +386,12 @@ class Component extends DCLogic {
         else this.renderSheet(this.state.sheetId);
       } catch (e) { this.renderSheet(this.state.sheetId); }
     }).catch(() => this.renderSheet(this.state.sheetId));
+    // Non-passive so the plan can swallow the page zoom/scroll on a trackpad.
+    document.addEventListener('wheel', this.onPlanWheel, { passive: false });
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('wheel', this.onPlanWheel);
   }
 
   rehydrate(saved) {
@@ -389,10 +400,10 @@ class Component extends DCLogic {
     }));
     const obs = (saved.obs || []).map(o => ({
       ...o,
-      photos: (o.photos || []).map(p => ({
+      photos: (o.photos || []).filter(p => p.blob).map(p => ({
         ...p,
         taken: p.taken ? new Date(p.taken) : null,
-        url: p.blob ? URL.createObjectURL(p.blob) : PLACEHOLDER
+        url: URL.createObjectURL(p.blob)
       }))
     }));
     uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
@@ -519,15 +530,16 @@ class Component extends DCLogic {
       const obs = await Promise.all(data.obs.map(async o => ({
         id: o.id, sheet: o.sheet, x: o.x, y: o.y,
         discipline: o.discipline, status: o.status, desc: o.desc,
-        photos: await Promise.all((o.photos || []).map(async p => {
+        photos: (await Promise.all((o.photos || []).map(async p => {
           const blob = await toBlob(p.data);
+          if (!blob) return null;
           return {
-            id: p.id, blob: blob || null,
-            url: blob ? URL.createObjectURL(blob) : PLACEHOLDER,
+            id: p.id, blob,
+            url: URL.createObjectURL(blob),
             taken: p.taken ? new Date(p.taken) : null,
             lat: p.lat ?? null, lon: p.lon ?? null
           };
-        }))
+        }))).filter(Boolean)
       })));
       uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
       const sheetId = sheets.some(s => s.id === data.sheetId) ? data.sheetId : (sheets[0] && sheets[0].id);
@@ -701,7 +713,7 @@ class Component extends DCLogic {
       const taken = (this.exif && this.exif.fmtExifDate(meta.taken)) || new Date(f.lastModified || Date.now());
       const photo = { id: ++uid, url, blob: f, taken, lat: meta.lat ?? null, lon: meta.lon ?? null };
       this.setState(st => ({
-        obs: st.obs.map(o => o.id === st.selId ? { ...o, photos: [...o.photos.filter(p => p.url !== PLACEHOLDER), photo] } : o)
+        obs: st.obs.map(o => o.id === st.selId ? { ...o, photos: [...o.photos, photo] } : o)
       }));
     }
   };
@@ -719,14 +731,151 @@ class Component extends DCLogic {
     });
   };
 
-  onPlanClick = (e) => {
-    if (!this.state.placing) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-    if (x < 0 || x > 1 || y < 0 || y > 1) return;
-    const o = { id: ++uid, sheet: this.state.sheetId, x, y, discipline: 'Architectural', status: 'Open', desc: '', photos: [] };
-    this.setState(st => ({ obs: [...st.obs, o], selId: o.id, placing: false, screen: 'obs' }));
+  // ---- Plan viewer: pinch/wheel zoom, drag pan, tap to pin -----------------
+  // The view is a transform on the canvas rather than scroll position, so the
+  // same maths serves touch, trackpad and mouse. During a gesture the
+  // transform is written straight to the node and only committed to state on
+  // release — re-rendering the tree on every move drops frames on a phone.
+  MINZ = 1; MAXZ = 8;
+  _ptrs = new Map();
+  _view = { z: 1, tx: 0, ty: 0 };
+
+  canvasEl() { return this._surf ? this._surf.querySelector('.om-plan-canvas') : null; }
+
+  clampView() {
+    const surf = this._surf, c = this.canvasEl();
+    if (!surf || !c) return;
+    const v = this._view;
+    const sw = surf.clientWidth, sh = surf.clientHeight;
+    const cw = c.offsetWidth * v.z, ch = c.offsetHeight * v.z;
+    v.tx = cw <= sw ? (sw - cw) / 2 : Math.min(0, Math.max(sw - cw, v.tx));
+    v.ty = ch <= sh ? 0 : Math.min(0, Math.max(sh - ch, v.ty));
+  }
+
+  applyView() {
+    const c = this.canvasEl();
+    if (!c) return;
+    const v = this._view;
+    c.style.transform = 'translate(' + v.tx + 'px,' + v.ty + 'px) scale(' + v.z + ')';
+    const inv = 1 / v.z;
+    c.querySelectorAll('[data-pin]').forEach(p => {
+      p.style.transform = 'translate(-50%,-100%) scale(' + inv + ')';
+    });
+  }
+
+  zoomAt(fx, fy, targetZ) {
+    const v = this._view;
+    const z = Math.max(this.MINZ, Math.min(this.MAXZ, targetZ));
+    v.tx = fx - (z / v.z) * (fx - v.tx);
+    v.ty = fy - (z / v.z) * (fy - v.ty);
+    v.z = z;
+    this.clampView();
+    this.applyView();
+  }
+
+  commitView(tapped, e) {
+    const v = this._view;
+    this.setState({ zoom: v.z, tx: v.tx, ty: v.ty }, () => {
+      if (v.z >= 3) this.renderSheet(this.state.sheetId, true);
+    });
+    if (tapped) this.handleTap(e);
+  }
+
+  resetView = () => {
+    this._view = { z: 1, tx: 0, ty: 0 };
+    this.applyView();
+    this.setState({ zoom: 1, tx: 0, ty: 0 });
   };
+
+  stepSheet(dir) {
+    const st = this.state;
+    const i = st.sheets.findIndex(s => s.id === st.sheetId);
+    if (i < 0 || st.sheets.length < 2) return;
+    const next = st.sheets[(i + dir + st.sheets.length) % st.sheets.length];
+    this._view = { z: 1, tx: 0, ty: 0 };
+    this.setState({ sheetId: next.id, zoom: 1, tx: 0, ty: 0, placing: false }, () => {
+      this.applyView();
+      this.renderSheet(next.id);
+    });
+  }
+
+  onPtrDown = (e) => {
+    this._surf = e.currentTarget;
+    this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
+    this._ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this._ptrs.size === 1) this._moved = 0;
+    if (this._ptrs.size === 2) {
+      const [a, b] = [...this._ptrs.values()];
+      this._pinch = {
+        d: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+        z: this._view.z,
+        mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2
+      };
+    }
+  };
+
+  onPtrMove = (e) => {
+    if (!this._ptrs.has(e.pointerId)) return;
+    const prev = this._ptrs.get(e.pointerId);
+    const cur = { x: e.clientX, y: e.clientY };
+    this._ptrs.set(e.pointerId, cur);
+    this._moved += Math.hypot(cur.x - prev.x, cur.y - prev.y);
+    const surf = this._surf || e.currentTarget;
+    const r = surf.getBoundingClientRect();
+    if (this._ptrs.size >= 2 && this._pinch) {
+      const [a, b] = [...this._ptrs.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      // Follow the midpoint as it travels so a pinch can pan at the same time.
+      this._view.tx += mx - this._pinch.mx;
+      this._view.ty += my - this._pinch.my;
+      this._pinch.mx = mx; this._pinch.my = my;
+      this.zoomAt(mx - r.left, my - r.top, this._pinch.z * (d / this._pinch.d));
+    } else {
+      this._view.tx += cur.x - prev.x;
+      this._view.ty += cur.y - prev.y;
+      this.clampView();
+      this.applyView();
+    }
+  };
+
+  onPtrUp = (e) => {
+    if (!this._ptrs.has(e.pointerId)) return;
+    const solo = this._ptrs.size === 1;
+    this._ptrs.delete(e.pointerId);
+    if (this._ptrs.size < 2) this._pinch = null;
+    if (this._ptrs.size === 0) this.commitView(solo && this._moved < 8, e);
+  };
+
+  onPlanWheel = (e) => {
+    const surf = (e.composedPath ? e.composedPath() : []).find(
+      n => n && n.classList && n.classList.contains('om-plan-surface'));
+    if (!surf) return;
+    e.preventDefault();
+    this._surf = surf;
+    this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
+    const r = surf.getBoundingClientRect();
+    this.zoomAt(e.clientX - r.left, e.clientY - r.top, this._view.z * Math.exp(-e.deltaY * .0018));
+    clearTimeout(this._wheelT);
+    this._wheelT = setTimeout(() => this.commitView(false), 140);
+  };
+
+  handleTap(e) {
+    const c = this.canvasEl();
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
+    if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
+    // Markers sit above their anchor, so hit-test the circle where it is drawn.
+    const hit = this.state.obs.filter(o => o.sheet === this.state.sheetId).find(o => {
+      const px = r.left + o.x * r.width, py = r.top + o.y * r.height - 23;
+      return Math.hypot(e.clientX - px, e.clientY - py) <= 20;
+    });
+    if (hit) { this.setState({ selId: hit.id, screen: 'obs' }); return; }
+    if (!this.state.placing) return;
+    const o = { id: ++uid, sheet: this.state.sheetId, x: nx, y: ny, discipline: 'Architectural', status: 'Open', desc: '', photos: [] };
+    this.setState(st => ({ obs: [...st.obs, o], selId: o.id, placing: false, screen: 'obs' }));
+  }
 
   renderVals() {
     const st = this.state;
@@ -735,11 +884,11 @@ class Component extends DCLogic {
     const sheet = this.sheet(st.sheetId);
     const pins = st.obs.filter(o => o.sheet === st.sheetId).map(o => ({
       num: this.num(o), left: (o.x * 100).toFixed(3) + '%', top: (o.y * 100).toFixed(3) + '%',
-      open: () => this.setState({ selId: o.id, screen: 'obs' })
+      inv: (1 / st.zoom).toFixed(4)
     }));
     const selPhotos = sel ? sel.photos.map(p => ({
       url: p.url,
-      stamp: p.url === PLACEHOLDER ? 'no metadata' : (p.taken ? this.fmtTime(p.taken) : 'no metadata'),
+      stamp: p.taken ? this.fmtTime(p.taken) : 'no metadata',
       remove: () => this.patchSel({ photos: sel.photos.filter(q => q.id !== p.id) })
     })) : [];
 
@@ -767,7 +916,11 @@ class Component extends DCLogic {
       sheetCards: st.sheets.map(s => ({
         id: s.id, name: s.name,
         countLabel: st.obs.filter(o => o.sheet === s.id).length + ' pinned',
-        open: () => { this.setState({ screen: 'plan', sheetId: s.id }); this.renderSheet(s.id); }
+        open: () => {
+          this._view = { z: 1, tx: 0, ty: 0 };
+          this.setState({ screen: 'plan', sheetId: s.id, zoom: 1, tx: 0, ty: 0 });
+          this.renderSheet(s.id);
+        }
       })),
       onSheetUpload: this.onSheetUpload,
       resetAll: this.resetAll,
@@ -775,7 +928,7 @@ class Component extends DCLogic {
       onProjectLoad: this.onProjectLoad,
       note: st.note, hasNote: !!st.note,
 
-      planSrc: (st.zoom >= 3 && st.planHi[st.sheetId]) || st.planImgs[st.sheetId] || PLACEHOLDER,
+      planSrc: (st.zoom >= 3 && st.planHi[st.sheetId]) || st.planImgs[st.sheetId] || '',
       planReady: !!st.planImgs[st.sheetId],
       planBusy: !st.planImgs[st.sheetId] && !st.planErr[st.sheetId],
       planFailed: !st.planImgs[st.sheetId] && !!st.planErr[st.sheetId],
@@ -791,23 +944,24 @@ class Component extends DCLogic {
           this.renderSheet(st.sheetId);
         });
       },
-      planWidth: (st.zoom * 100) + '%',
-      zoomLabel: st.zoom === 1 ? 'Fit' : st.zoom + '×',
-      toggleZoom: () => {
-        const z = st.zoom >= 5 ? 1 : st.zoom + 1;
-        this.setState({ zoom: z });
-        if (z >= 3) this.renderSheet(st.sheetId, true);
-      },
+      planTransform: 'translate(' + st.tx + 'px,' + st.ty + 'px) scale(' + st.zoom + ')',
+      planCursor: st.placing ? 'crosshair' : 'grab',
+      zoomLabel: st.zoom <= 1.01 ? 'Fit' : st.zoom.toFixed(1) + '×',
+      resetView: this.resetView,
+      prevSheet: () => this.stepSheet(-1),
+      nextSheet: () => this.stepSheet(1),
       pins,
-      onPlanClick: this.onPlanClick,
+      onPtrDown: this.onPtrDown,
+      onPtrMove: this.onPtrMove,
+      onPtrUp: this.onPtrUp,
       placing: st.placing,
       togglePlacing: () => this.setState(s => ({ placing: !s.placing })),
       placeBtnLabel: st.placing ? 'Tap the plan to set the pin' : 'New observation here',
       placeBtnBg: st.placing ? '#2215CC' : '#000',
       placeBtnFg: '#fff',
       planHint: st.placing
-        ? 'Pin lands where you tap — zoom in first for room-level accuracy.'
-        : (sheet ? sheet.name : '') + ' · ' + pins.length + ' observation' + (pins.length === 1 ? '' : 's') + ' on this sheet',
+        ? 'Pin lands where you tap — pinch to zoom in first for room-level accuracy.'
+        : (sheet ? sheet.name : '') + ' · ' + pins.length + ' observation' + (pins.length === 1 ? '' : 's') + ' · pinch to zoom, drag to pan',
 
       sel: sel || { desc: '', sheet: '' },
       selNum: sel ? String(this.num(sel)).padStart(2, '0') : '',
@@ -845,7 +999,8 @@ class Component extends DCLogic {
           statusBg: stt.bg, statusFg: stt.fg, statusBorder: stt.border,
           sheetLine: o.sheet + (sh ? ' — ' + sh.name : ''),
           gps: this.gpsOf(o), taken: this.takenOf(o),
-          photos: (o.photos.length ? o.photos : [{ id: 'x', url: PLACEHOLDER }]).map((p, j) => ({
+          hasPhotos: o.photos.length > 0,
+          photos: o.photos.map((p, j) => ({
             url: p.url,
             caption: String(i + 1) + '.' + (j + 1) + (p.taken ? ' · ' + p.taken.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
           }))
@@ -855,7 +1010,7 @@ class Component extends DCLogic {
         const n = st.obs.filter(o => o.sheet === s.id).length;
         return {
           id: s.id, name: s.name,
-          src: st.planComposites[s.id] || st.planImgs[s.id] || PLACEHOLDER,
+          src: st.planComposites[s.id] || st.planImgs[s.id] || '',
           countLabel: n + ' observation' + (n === 1 ? '' : 's')
         };
       }),
