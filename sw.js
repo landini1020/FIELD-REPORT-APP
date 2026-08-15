@@ -1,4 +1,4 @@
-const CACHE = 'field-report-v4';
+const CACHE = 'field-report-v5';
 const CORE = ['./','index.html','support.js','exif.js','store.js','logo.svg','manifest.webmanifest',
 'icon-180.png','icon-192.png','icon-512.png',
 'plans/A101.png','plans/A102.png','plans/A103.png',
@@ -13,9 +13,15 @@ const CORE = ['./','index.html','support.js','exif.js','store.js','logo.svg','ma
 'pdf/standard_fonts/LiberationSans-Italic.ttf','pdf/standard_fonts/LiberationSans-Regular.ttf'];
 
 self.addEventListener('install', e => {
-  // One missing file must not fail the whole install.
+  // One missing file must not fail the whole install. Fetched with
+  // cache:'reload' because Pages serves these with max-age=600, and c.add()
+  // would happily bake a stale copy into a brand new cache version.
   e.waitUntil(caches.open(CACHE)
-    .then(c => Promise.all(CORE.map(u => c.add(u).catch(() => {}))))
+    .then(c => Promise.all(CORE.map(u =>
+      fetch(new Request(u, { cache: 'reload' }))
+        .then(res => (res && res.ok) ? c.put(u, res) : null)
+        .catch(() => { })
+    )))
     .then(() => self.skipWaiting()));
 });
 
@@ -35,10 +41,13 @@ self.addEventListener('fetch', e => {
 
   e.respondWith((async () => {
     // The app shell is network-first, so a new deploy is picked up on reload
-    // instead of being pinned to a stale cached copy forever.
+    // instead of being pinned to a stale cached copy forever. cache:'no-store'
+    // matters: Pages sends max-age=600 on index.html, so a plain fetch() here
+    // is answered by the HTTP cache and "network-first" silently becomes
+    // "ten minutes behind" no matter how many times the page is reloaded.
     if (isDoc) {
       try {
-        const res = await fetch(req);
+        const res = await fetch(req.url, { cache: 'no-store' });
         if (res && res.ok) {
           const copy = res.clone();
           caches.open(CACHE).then(c => c.put('index.html', copy)).catch(() => {});

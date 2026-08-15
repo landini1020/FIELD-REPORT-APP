@@ -12,7 +12,16 @@
 <meta name="theme-color" content="#000000">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+<script>
+// updateViaCache:'none' so the worker script is never answered from the HTTP
+// cache, and an explicit update() on every launch so a new deploy is noticed
+// rather than waiting out Pages' max-age.
+if('serviceWorker' in navigator)addEventListener('load',()=>{
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'})
+    .then(r=>{r.update().catch(()=>{});})
+    .catch(()=>{});
+});
+</script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -157,6 +166,7 @@ a:hover{color:#1a0fa0}
                 </div>
               </sc-for>
               <div onClick="{{ goSheets }}" style="margin-top:4px;border-radius:4px;padding:13px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:#000;color:#fff;border:1px solid #000">Done</div>
+              <div style="padding-top:8px;border-top:1px solid #F0EEE8;font-family:'Instrument Sans Cond';font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#8a8880">Build {{ build }}</div>
             </div>
           </div>
         </sc-if>
@@ -384,6 +394,9 @@ const today = () => {
   const d = new Date();
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
 };
+// Shown on the Project screen so "did my phone get the update?" is a glance
+// rather than a guess. Bump it with any deploy worth confirming.
+const BUILD = '2026-08-15 · project info';
 const PROJECT = {
   number: '24383', name: 'Emerson',
   clientName: '', clientNumber: '',
@@ -1195,6 +1208,7 @@ class Component extends DCLogic {
       clientLine: [P.clientName, P.clientNumber].filter(Boolean).join(' · '),
       hasClient: !!(P.clientName || P.clientNumber),
 
+      build: BUILD,
       isProject: st.screen === 'project',
       goProject: () => this.setState({ screen: 'project', view: 'app' }),
       projectFields: [
