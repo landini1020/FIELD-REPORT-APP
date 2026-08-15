@@ -369,6 +369,7 @@ class Component extends DCLogic {
     isFs: false,
     planImgs: {},
     planHi: {},
+    planHiW: {},
     planErr: {},
     planComposites: {},
     note: '',
@@ -557,7 +558,7 @@ class Component extends DCLogic {
         obs, sheetId,
         selId: obs.length ? obs[0].id : null,
         screen: 'sheets', view: 'app', placing: false, zoom: 1,
-        planImgs: {}, planHi: {}, planErr: {}, planComposites: {}, loading: {}
+        planImgs: {}, planHi: {}, planHiW: {}, planErr: {}, planComposites: {}, loading: {}
       }, () => {
         this.renderSheet(this.state.sheetId);
         this.say('Loaded ' + obs.length + ' observation' + (obs.length === 1 ? '' : 's') + ' from ' + f.name);
@@ -574,11 +575,19 @@ class Component extends DCLogic {
   async renderSheet(id, hi) {
     const s = this.sheet(id);
     if (!s) return null;
+    // `hi` is a target pixel width (true == the old fixed 2600) so the page can
+    // be re-rendered sharper as the user zooms further in.
+    const want = hi ? (typeof hi === 'number' ? hi : 2600) : 0;
     const busy = hi ? 'hi:' + id : id;
-    const have = hi ? this.state.planHi[id] : this.state.planImgs[id];
-    if (have) return have;
+    if (hi) {
+      if ((this.state.planHiW[id] || 0) >= want) return this.state.planHi[id];
+    } else if (this.state.planImgs[id]) {
+      return this.state.planImgs[id];
+    }
     if (this.state.loading[busy]) return null;
     const isPdf = s.isPdf != null ? s.isPdf : /\.pdf$/i.test(s.file);
+    // A raster sheet has no detail beyond its own pixels — nothing to re-render.
+    if (isPdf === false && hi) return this.state.planImgs[id] || s.file;
     if (!isPdf) {
       // Preload so a missing/blocked sheet surfaces the error state rather than a blank pane.
       return new Promise(res => {
@@ -605,17 +614,21 @@ class Component extends DCLogic {
       this._docs[id] = this._docs[id] || pdfjs.getDocument(s.file).promise;
       const doc = await this._docs[id];
       const page = await doc.getPage(1);
-      const target = hi ? 2600 : 1200;
+      const target = want || 1200;
       let vp = page.getViewport({ scale: 1 });
-      vp = page.getViewport({ scale: Math.min(target / vp.width, target / vp.height) });
+      let scale = Math.min(target / vp.width, target / vp.height);
+      // Keep one canvas inside the mobile decode ceiling or Safari drops it.
+      const px = vp.width * scale * vp.height * scale;
+      if (px > this.MAXPX) scale *= Math.sqrt(this.MAXPX / px);
+      vp = page.getViewport({ scale });
       const c = document.createElement('canvas');
       c.width = Math.round(vp.width); c.height = Math.round(vp.height);
       const ctx = c.getContext('2d');
       ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      const url = c.toDataURL('image/jpeg', hi ? .9 : .85);
+      const url = c.toDataURL('image/jpeg', hi ? .92 : .85);
       this.setState(st => (hi
-        ? { planHi: { ...st.planHi, [id]: url }, loading: { ...st.loading, [busy]: false } }
+        ? { planHi: { ...st.planHi, [id]: url }, planHiW: { ...st.planHiW, [id]: c.width }, loading: { ...st.loading, [busy]: false } }
         : { planImgs: { ...st.planImgs, [id]: url }, loading: { ...st.loading, [busy]: false } }));
       return url;
     } catch (e) {
@@ -658,8 +671,12 @@ class Component extends DCLogic {
   compositeAll = async () => {
     for (const s of this.state.sheets) {
       try {
-        const src = await this.renderSheet(s.id);
+        let src = await this.renderSheet(s.id);
         if (!src) continue;
+        // Print wants more than the fast preview render, but not the full
+        // zoom-grade one — that would bloat the exported PDF.
+        const isPdf = s.isPdf != null ? s.isPdf : /\.pdf$/i.test(s.file);
+        if (isPdf) src = (await this.renderSheet(s.id, 2800)) || src;
         const out = await this.compositeSheet(s.id, src);
         if (out) this.setState(st => ({ planComposites: { ...st.planComposites, [s.id]: out } }));
       } catch (e) { }
@@ -746,6 +763,8 @@ class Component extends DCLogic {
   // transform is written straight to the node and only committed to state on
   // release — re-rendering the tree on every move drops frames on a phone.
   MINZ = 1; MAXZ = 8;
+  MAXW = 6000;          // widest single re-render of a vector sheet
+  MAXPX = 16000000;     // iOS drops a canvas much past ~16MP
   _ptrs = new Map();
   _view = { z: 1, tx: 0, ty: 0 };
 
@@ -784,10 +803,25 @@ class Component extends DCLogic {
 
   commitView(tapped, e) {
     const v = this._view;
-    this.setState({ zoom: v.z, tx: v.tx, ty: v.ty }, () => {
-      if (v.z >= 3) this.renderSheet(this.state.sheetId, true);
-    });
+    this.setState({ zoom: v.z, tx: v.tx, ty: v.ty }, () => this.ensureDetail());
     if (tapped) this.handleTap(e);
+  }
+
+  // Re-render a vector sheet at the resolution the current zoom actually
+  // needs. A single fixed "hi-res" pass runs out of pixels almost immediately
+  // on a 3x-density phone screen.
+  ensureDetail() {
+    const id = this.state.sheetId;
+    const s = this.sheet(id);
+    if (!s) return;
+    const isPdf = s.isPdf != null ? s.isPdf : /\.pdf$/i.test(s.file);
+    if (!isPdf) return;
+    const cssW = (this._surf && this._surf.clientWidth) || 400;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const want = Math.round(cssW * this.state.zoom * dpr);
+    if (want <= (this.state.planHiW[id] || 1200)) return;
+    // Step up in chunks so a slow pinch does not queue a render per frame.
+    this.renderSheet(id, Math.min(this.MAXW, Math.ceil(want / 800) * 800));
   }
 
   resetView = () => {
@@ -816,7 +850,7 @@ class Component extends DCLogic {
     this.setState({
       isFs: !!(document.fullscreenElement || document.webkitFullscreenElement),
       zoom: 1, tx: 0, ty: 0
-    }, () => this.applyView());
+    }, () => { this.applyView(); this.ensureDetail(); });
   };
 
   stepSheet(dir) {
@@ -970,7 +1004,7 @@ class Component extends DCLogic {
       onProjectLoad: this.onProjectLoad,
       note: st.note, hasNote: !!st.note,
 
-      planSrc: (st.zoom >= 3 && st.planHi[st.sheetId]) || st.planImgs[st.sheetId] || '',
+      planSrc: st.planHi[st.sheetId] || st.planImgs[st.sheetId] || '',
       planReady: !!st.planImgs[st.sheetId],
       planBusy: !st.planImgs[st.sheetId] && !st.planErr[st.sheetId],
       planFailed: !st.planImgs[st.sheetId] && !!st.planErr[st.sheetId],
