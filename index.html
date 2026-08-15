@@ -159,12 +159,32 @@ a:hover{color:#1a0fa0}
             </div>
             <div style="flex:1;overflow-y:auto;padding:16px 16px 26px;display:flex;flex-direction:column;gap:14px">
               <div style="font-size:12px;color:#6b6963;line-height:1.45">These appear on the exported report. Saved on this device with the rest of the walk.</div>
-              <sc-for list="{{ projectFields }}" as="f" hint-placeholder-count="7">
+              <sc-for list="{{ projectFields }}" as="f" hint-placeholder-count="6">
                 <div style="display:flex;flex-direction:column;gap:6px">
                   <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">{{ f.label }}</div>
                   <input type="{{ f.type }}" value="{{ f.value }}" onChange="{{ f.set }}" placeholder="{{ f.hint }}" style="width:100%;border:1px solid #E7E4DD;border-radius:3px;padding:10px;font-family:'Instrument Sans',sans-serif;font-size:13px;color:#000;background:#fff" />
                 </div>
               </sc-for>
+
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Recipients</div>
+                  <div onClick="{{ addRecipient }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2215CC;cursor:pointer;padding:2px 0">+ Add recipient</div>
+                </div>
+                <sc-for list="{{ recipientRows }}" as="r" hint-placeholder-count="1">
+                  <div style="display:flex;flex-direction:column;gap:6px;border:1px solid #E7E4DD;border-radius:3px;padding:10px;background:#FAF9F6">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">{{ r.label }}</div>
+                      <div onClick="{{ r.remove }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer">Remove</div>
+                    </div>
+                    <input type="text" value="{{ r.name }}" onChange="{{ r.setName }}" placeholder="Name" style="width:100%;border:1px solid #E7E4DD;border-radius:3px;padding:9px;font-family:'Instrument Sans',sans-serif;font-size:13px;color:#000;background:#fff" />
+                    <input type="email" value="{{ r.email }}" onChange="{{ r.setEmail }}" placeholder="name@firm.com" style="width:100%;border:1px solid #E7E4DD;border-radius:3px;padding:9px;font-family:'Instrument Sans',sans-serif;font-size:13px;color:#000;background:#fff" />
+                  </div>
+                </sc-for>
+                <sc-if value="{{ noRecipients }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12px;color:#8a8880;line-height:1.45">None yet — add one and it appears on the report.</div>
+                </sc-if>
+              </div>
               <div onClick="{{ goSheets }}" style="margin-top:4px;border-radius:4px;padding:13px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:#000;color:#fff;border:1px solid #000">Done</div>
               <div style="padding-top:8px;border-top:1px solid #F0EEE8;font-family:'Instrument Sans Cond';font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#8a8880">Build {{ build }}</div>
             </div>
@@ -324,7 +344,14 @@ a:hover{color:#1a0fa0}
           </sc-if>
           <div style="display:flex;flex-direction:column;gap:3px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Prepared by</div><div style="font-size:13px;font-weight:500">{{ preparedBy }}</div></div>
           <div style="display:flex;flex-direction:column;gap:3px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Observations</div><div style="font-size:13px;font-weight:500">{{ obsCount }}</div></div>
-          <div style="display:flex;flex-direction:column;gap:3px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Recipients</div><div style="font-size:13px;font-weight:500;line-height:1.4;word-break:break-word">{{ recipients }}</div></div>
+          <sc-if value="{{ hasRecipients }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Recipients</div>
+              <sc-for list="{{ recipientList }}" as="r" hint-placeholder-count="1">
+                <div style="font-size:13px;font-weight:500;line-height:1.4;word-break:break-word">{{ r.line }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
         </div>
       </div>
 
@@ -346,7 +373,7 @@ a:hover{color:#1a0fa0}
                 <div style="display:flex;flex-direction:column;gap:2px"><div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8880">Observed</div><div style="font-size:12.5px;font-weight:500">{{ o.taken }}</div></div>
               </div>
               <sc-if value="{{ o.hasPhotos }}" hint-placeholder-val="{{ true }}">
-                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(0,calc(31.25% - 8px)));gap:10px">
                   <sc-for list="{{ o.photos }}" as="ph" hint-placeholder-count="2">
                     <div style="display:flex;flex-direction:column;gap:5px">
                       <div style="aspect-ratio:4/3;background:#EDEAE3;border:1px solid #E7E4DD;overflow:hidden">
@@ -396,12 +423,12 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-15 · project info';
+const BUILD = '2026-08-15 · recipients';
 const PROJECT = {
-  number: '24383', name: 'Emerson',
+  number: '', name: '',
   clientName: '', clientNumber: '',
-  date: '', preparedBy: 'J. Landini, Champlin Studios',
-  recipients: 'hvacca@praterengr.com'
+  date: '', preparedBy: '',
+  recipients: []
 };
 const STATUSES = [
   { label: 'Open', fg: '#FA6500', bg: 'rgba(250,101,0,.08)', border: '#FA6500' },
@@ -409,6 +436,19 @@ const STATUSES = [
   { label: 'FYI', fg: '#6b6963', bg: '#FAF9F6', border: '#E7E4DD' }
 ];
 let uid = 100;
+
+// Recipients used to be one comma-separated string; keep older saves and
+// project files readable by folding them into the name/email rows.
+function normRecipients(v) {
+  if (Array.isArray(v)) {
+    return v.map(r => ({ id: r.id || ++uid, name: r.name || '', email: r.email || '' }));
+  }
+  if (typeof v === 'string' && v.trim()) {
+    return v.split(/[,;]+/).map(s => s.trim()).filter(Boolean)
+      .map(e => ({ id: ++uid, name: '', email: e }));
+  }
+  return [];
+}
 
 class Component extends DCLogic {
   state = {
@@ -477,7 +517,10 @@ class Component extends DCLogic {
     uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
     return {
       sheets, obs,
-      project: { ...this.state.project, ...(saved.project || {}) },
+      project: {
+        ...this.state.project, ...(saved.project || {}),
+        recipients: normRecipients((saved.project || {}).recipients)
+      },
       sheetId: saved.sheetId || this.state.sheetId,
       selId: obs.length ? obs[0].id : null
     };
@@ -685,7 +728,8 @@ class Component extends DCLogic {
           ...(data.project ? {} : {
             name: data.projectName || this.state.project.name,
             number: data.projectNumber || this.state.project.number
-          })
+          }),
+          recipients: normRecipients((data.project || {}).recipients)
         },
         selId: obs.length ? obs[0].id : null,
         screen: 'sheets', view: 'app', placing: false, zoom: 1,
@@ -868,6 +912,15 @@ class Component extends DCLogic {
   stampOf(o) {
     const p = (o.photos || []).find(p => p.lat != null || p.taken);
     return p || null;
+  }
+
+  patchRecipient(id, patch) {
+    this.setState(s => ({
+      project: {
+        ...s.project,
+        recipients: s.project.recipients.map(r => r.id === id ? { ...r, ...patch } : r)
+      }
+    }));
   }
 
   fmtTime(d) {
@@ -1203,22 +1256,41 @@ class Component extends DCLogic {
       projectNumber: P.number,
       projectTitle: [P.number, P.name].filter(Boolean).join(' — ') || 'Untitled project',
       preparedBy: P.preparedBy || '—',
-      recipients: P.recipients || '—',
       today: this.fmtDay(P.date),
       clientLine: [P.clientName, P.clientNumber].filter(Boolean).join(' · '),
       hasClient: !!(P.clientName || P.clientNumber),
 
       build: BUILD,
       isProject: st.screen === 'project',
+
+      recipientRows: (P.recipients || []).map((r, i) => ({
+        label: 'Recipient ' + (i + 1),
+        name: r.name || '', email: r.email || '',
+        setName: (e) => this.patchRecipient(r.id, { name: e.target.value }),
+        setEmail: (e) => this.patchRecipient(r.id, { email: e.target.value }),
+        remove: () => this.setState(s => ({
+          project: { ...s.project, recipients: s.project.recipients.filter(x => x.id !== r.id) }
+        }))
+      })),
+      noRecipients: !(P.recipients || []).length,
+      addRecipient: () => this.setState(s => ({
+        project: { ...s.project, recipients: [...(s.project.recipients || []), { id: ++uid, name: '', email: '' }] }
+      })),
+      // A recipient with only one of the two filled in still belongs on the
+      // report, so fall back to whichever is there rather than dropping them.
+      recipientList: (P.recipients || [])
+        .map(r => ({ line: [r.name, r.email].filter(Boolean).join(' · ') }))
+        .filter(r => r.line),
+      hasRecipients: (P.recipients || []).some(r => r.name || r.email),
+
       goProject: () => this.setState({ screen: 'project', view: 'app' }),
       projectFields: [
-        { key: 'number', label: 'Project number', type: 'text', hint: '24383' },
-        { key: 'name', label: 'Project name', type: 'text', hint: 'Emerson' },
-        { key: 'clientName', label: 'Client name', type: 'text', hint: 'Client' },
-        { key: 'clientNumber', label: 'Client number', type: 'text', hint: 'Client job number' },
-        { key: 'date', label: 'Report date', type: 'date', hint: '' },
-        { key: 'preparedBy', label: 'Prepared by', type: 'text', hint: 'Name, firm' },
-        { key: 'recipients', label: 'Recipients', type: 'text', hint: 'name@firm.com' }
+        { key: 'number', label: 'Project #', type: 'text', hint: 'Project #' },
+        { key: 'name', label: 'Project Name', type: 'text', hint: 'Project Name' },
+        { key: 'clientName', label: 'Client Name', type: 'text', hint: 'Client Name' },
+        { key: 'clientNumber', label: 'Client #', type: 'text', hint: 'Client #' },
+        { key: 'date', label: 'Report Date', type: 'date', hint: '' },
+        { key: 'preparedBy', label: 'Prepared By', type: 'text', hint: 'Prepared By' }
       ].map(f => ({
         ...f, value: P[f.key] || '',
         set: (e) => {
