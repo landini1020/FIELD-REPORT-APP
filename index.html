@@ -436,7 +436,7 @@ class Component extends DCLogic {
     const payload = {
       sheetId: st.sheetId,
       planImgs: st.planImgs,
-      sheets: st.sheets.map(s => ({ id: s.id, name: s.name, isPdf: s.isPdf, blob: s.blob || null, file: s.blob ? null : s.file })),
+      sheets: st.sheets.map(s => ({ id: s.id, name: s.name, isPdf: s.isPdf, page: s.page || 1, blob: s.blob || null, file: s.blob ? null : s.file })),
       obs: st.obs.map(o => ({
         id: o.id, sheet: o.sheet, x: o.x, y: o.y, discipline: o.discipline, status: o.status, desc: o.desc,
         photos: (o.photos || []).map(p => ({ id: p.id, taken: p.taken ? p.taken.toISOString() : null, blob: p.blob || null }))
@@ -471,11 +471,20 @@ class Component extends DCLogic {
     try {
       this.say('Packing project…');
       const st = this.state;
-      const sheets = await Promise.all(st.sheets.map(async s => ({
-        id: s.id, name: s.name, isPdf: s.isPdf,
+      // Every page of one plan set points at the same blob — encode it once
+      // and have the sheets reference it, or a 40-page set is 40 copies.
+      const blobs = [], idxOf = new Map();
+      for (const s of st.sheets) {
+        if (s.blob && !idxOf.has(s.blob)) {
+          idxOf.set(s.blob, blobs.length);
+          blobs.push(await this.toDataUrl(s.blob));
+        }
+      }
+      const sheets = st.sheets.map(s => ({
+        id: s.id, name: s.name, isPdf: s.isPdf, page: s.page || 1,
         file: s.blob ? null : s.file,
-        data: s.blob ? await this.toDataUrl(s.blob) : null
-      })));
+        fileRef: s.blob ? idxOf.get(s.blob) : null
+      }));
       const obs = await Promise.all(st.obs.map(async o => ({
         id: o.id, sheet: o.sheet, x: o.x, y: o.y,
         discipline: o.discipline, status: o.status, desc: o.desc,
@@ -487,10 +496,10 @@ class Component extends DCLogic {
       })));
       const num = this.props.projectNumber ?? '24383';
       const payload = {
-        app: 'champlin-field-report', version: 1,
+        app: 'champlin-field-report', version: 2,
         savedAt: new Date().toISOString(),
         projectNumber: num, projectName: this.props.projectName ?? 'Emerson',
-        sheetId: st.sheetId, sheets, obs
+        sheetId: st.sheetId, sheets, files: blobs, obs
       };
       const stamp = new Date().toISOString().slice(0, 10);
       const name = num + '-field-report-' + stamp + '.json';
@@ -529,12 +538,23 @@ class Component extends DCLogic {
         return;
       }
       const toBlob = async (u) => u ? await (await fetch(u)).blob() : null;
+      // v2 shares one encoded blob across a plan set's pages; v1 inlined it
+      // per sheet. Decode each shared file once and reuse the object URL so
+      // the pages keep pointing at a single parsed document.
+      const shared = await Promise.all((data.files || []).map(async u => {
+        const b = await toBlob(u);
+        return b ? { blob: b, url: URL.createObjectURL(b) } : null;
+      }));
       const sheets = await Promise.all((data.sheets || []).map(async s => {
-        const blob = await toBlob(s.data);
+        let ref = s.fileRef != null ? shared[s.fileRef] : null;
+        if (!ref && s.data) {
+          const b = await toBlob(s.data);
+          if (b) ref = { blob: b, url: URL.createObjectURL(b) };
+        }
         return {
-          id: s.id, name: s.name, isPdf: s.isPdf,
-          blob: blob || null,
-          file: blob ? URL.createObjectURL(blob) : s.file
+          id: s.id, name: s.name, isPdf: s.isPdf, page: s.page || 1,
+          blob: ref ? ref.blob : null,
+          file: ref ? ref.url : s.file
         };
       }));
       const obs = await Promise.all(data.obs.map(async o => ({
@@ -569,6 +589,16 @@ class Component extends DCLogic {
   };
 
   sheet(id) { return this.state.sheets.find(s => s.id === id); }
+
+  pdfjs() {
+    if (!this._pdfjs) {
+      this._pdfjs = import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(m => {
+        m.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+        return m;
+      });
+    }
+    return this._pdfjs;
+  }
 
   // Two-stage: a fast 1200px base paint so pins are usable at once, then a
   // 2600px upgrade rendered only when the user zooms past 2x.
@@ -608,12 +638,12 @@ class Component extends DCLogic {
     }
     this.setState(st => ({ loading: { ...st.loading, [busy]: true }, planErr: { ...st.planErr, [id]: false } }));
     try {
-      const pdfjs = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
-      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+      const pdfjs = await this.pdfjs();
       this._docs = this._docs || {};
-      this._docs[id] = this._docs[id] || pdfjs.getDocument(s.file).promise;
-      const doc = await this._docs[id];
-      const page = await doc.getPage(1);
+      // Keyed by file, not sheet, so every page of one upload shares a parse.
+      this._docs[s.file] = this._docs[s.file] || pdfjs.getDocument(s.file).promise;
+      const doc = await this._docs[s.file];
+      const page = await doc.getPage(s.page || 1);
       const target = want || 1200;
       let vp = page.getViewport({ scale: 1 });
       let scale = Math.min(target / vp.width, target / vp.height);
@@ -744,16 +774,44 @@ class Component extends DCLogic {
     }
   };
 
-  onSheetUpload = (e) => {
+  onSheetUpload = async (e) => {
     const f = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!f) return;
-    const id = f.name.replace(/\.(pdf|png|jpe?g)$/i, '').slice(0, 18);
+    const isPdf = /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+    const base = f.name.replace(/\.(pdf|png|jpe?g)$/i, '').slice(0, 18);
     const url = URL.createObjectURL(f);
-    const entry = { id, name: f.name, file: url, blob: f, isPdf: /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name) };
-    this.setState(st => ({ sheets: [...st.sheets, entry] }), () => {
-      this.renderSheet(id);
-      this.setState({ screen: 'plan', sheetId: id, placing: true });
+    let entries = [{ id: base, name: f.name, file: url, blob: f, isPdf, page: 1 }];
+    if (isPdf) {
+      // A plan set is one PDF holding every sheet, so split it into one sheet
+      // per page instead of stopping at page 1. They share the same blob.
+      try {
+        this.say('Reading sheet set…');
+        const pdfjs = await this.pdfjs();
+        this._docs = this._docs || {};
+        this._docs[url] = this._docs[url] || pdfjs.getDocument(url).promise;
+        const doc = await this._docs[url];
+        if (doc.numPages > 1) {
+          entries = [];
+          for (let n = 1; n <= doc.numPages; n++) {
+            entries.push({ id: base + ' p' + n, name: f.name + ' — page ' + n, file: url, blob: f, isPdf: true, page: n });
+          }
+        }
+      } catch (err) {
+        this.say('Could not read that PDF — added it as a single sheet.');
+      }
+    }
+    const taken = new Set(this.state.sheets.map(s => s.id));
+    entries.forEach(en => {
+      let id = en.id, i = 2;
+      while (taken.has(id)) id = en.id + ' (' + (i++) + ')';
+      en.id = id; taken.add(id);
+    });
+    this._view = { z: 1, tx: 0, ty: 0 };
+    this.setState(st => ({ sheets: [...st.sheets, ...entries] }), () => {
+      this.renderSheet(entries[0].id);
+      this.setState({ screen: 'plan', sheetId: entries[0].id, zoom: 1, tx: 0, ty: 0, placing: false });
+      if (entries.length > 1) this.say('Added ' + entries.length + ' sheets from ' + f.name);
     });
   };
 
@@ -1014,8 +1072,7 @@ class Component extends DCLogic {
         : 'This sheet couldn’t be rendered. Heavy vector sheets sometimes time out.',
       planErrPath: sheet ? String(sheet.file).slice(0, 90) : '',
       retryPlan: () => {
-        delete this._docs?.[st.sheetId];
-        const sh = this.sheet(st.sheetId);
+        if (sheet && this._docs) delete this._docs[sheet.file];
         this.setState(s => ({ planErr: { ...s.planErr, [st.sheetId]: false } }), () => {
           this.renderSheet(st.sheetId);
         });
