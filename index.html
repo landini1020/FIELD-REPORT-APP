@@ -429,7 +429,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-17 · new report';
+const BUILD = '2026-08-17 · save on refresh';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -502,13 +502,25 @@ class Component extends DCLogic {
     document.addEventListener('wheel', this.onPlanWheel, { passive: false });
     document.addEventListener('fullscreenchange', this.onFsChange);
     document.addEventListener('webkitfullscreenchange', this.onFsChange);
+    // A safety net for every other edit still sitting on the normal
+    // debounce (typing, moving a pin, changing status) — flush it the
+    // instant the tab is backgrounded or torn down by a refresh, rather
+    // than trusting the 350ms window to always win that race.
+    document.addEventListener('visibilitychange', this.onVisibility);
+    window.addEventListener('pagehide', this.flushSave);
   }
 
   componentWillUnmount() {
     document.removeEventListener('wheel', this.onPlanWheel);
     document.removeEventListener('fullscreenchange', this.onFsChange);
     document.removeEventListener('webkitfullscreenchange', this.onFsChange);
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    window.removeEventListener('pagehide', this.flushSave);
   }
+
+  onVisibility = () => {
+    if (document.visibilityState === 'hidden') this.flushSave();
+  };
 
   // Photo urls are rebuilt as data: URLs, not blob: ones, for the same
   // reason as onPhoto — they must survive a background/foreground cycle on
@@ -554,6 +566,16 @@ class Component extends DCLogic {
     clearTimeout(this._saveT);
     this._saveT = setTimeout(() => this.persist(), 350);
   }
+
+  // Fires the debounced save right now instead of waiting out the 350ms —
+  // called wherever a refresh or backgrounding could otherwise race it and
+  // cancel a write that was already queued but hadn't run yet.
+  flushSave = () => {
+    if (!this._saveT) return;
+    clearTimeout(this._saveT);
+    this._saveT = null;
+    this.persist();
+  };
 
   persist() {
     if (!this.store) return;
@@ -1059,9 +1081,13 @@ class Component extends DCLogic {
       ]);
       const taken = (this.exif && this.exif.fmtExifDate(meta.taken)) || new Date(f.lastModified || Date.now());
       const photo = { id: ++uid, url, blob: f, taken, lat: meta.lat ?? null, lon: meta.lon ?? null };
+      // Written to storage immediately rather than left on the normal 350ms
+      // debounce — a plain page refresh cancels a pending setTimeout outright
+      // with no grace period, and a just-taken photo is the one thing on this
+      // screen that cannot be recreated if that write never happens.
       this.setState(st => ({
         obs: st.obs.map(o => o.id === st.selId ? { ...o, photos: [...o.photos, photo] } : o)
-      }));
+      }), () => this.flushSave());
     }
   };
 
