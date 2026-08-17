@@ -423,7 +423,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-17 · photo fix';
+const BUILD = '2026-08-17 · smaller pdf photos';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -470,6 +470,7 @@ class Component extends DCLogic {
     planNativeW: {},
     planErr: {},
     planComposites: {},
+    photoComposites: {},
     note: '',
     loading: {},
     listening: false,
@@ -886,6 +887,25 @@ class Component extends DCLogic {
     return c.toDataURL('image/jpeg', .92);
   }
 
+  // Site photos come straight off the camera — often several MB at
+  // 4000px+ — but a report tile prints at a few hundred pixels wide. Shrink
+  // each one to a size that actually matters for the page, or the exported
+  // PDF ends up carrying full-resolution photos it never gets to show.
+  async compositePhoto(src) {
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i); i.onerror = rej;
+      i.src = src;
+    });
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    const scale = Math.min(1, this.REPORT_PHOTO_W / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', this.REPORT_PHOTO_Q);
+  }
+
   // Only sheets that were actually pinned. A plan set can run to dozens of
   // pages and rendering every one of them at print size would take minutes
   // and pad the report with blank plans nobody marked up.
@@ -905,6 +925,14 @@ class Component extends DCLogic {
         const out = await this.compositeSheet(s.id, src);
         if (out) this.setState(st => ({ planComposites: { ...st.planComposites, [s.id]: out } }));
       } catch (e) { }
+    }
+    for (const o of this.state.obs) {
+      for (const p of o.photos) {
+        try {
+          const out = await this.compositePhoto(p.url);
+          if (out) this.setState(st => ({ photoComposites: { ...st.photoComposites, [p.id]: out } }));
+        } catch (e) { }
+      }
     }
   };
 
@@ -1041,6 +1069,8 @@ class Component extends DCLogic {
   MAXW = 6000;          // widest single re-render of a vector sheet
   MAXPX = 16000000;     // iOS drops a canvas much past ~16MP
   QUICKW = 700;         // rough first paint while the real one rasterises
+  REPORT_PHOTO_W = 900; // longest edge for a photo printed in the report
+  REPORT_PHOTO_Q = .72; // jpeg quality for report photos
   _ptrs = new Map();
   _view = { z: 1, tx: 0, ty: 0 };
 
@@ -1317,8 +1347,8 @@ class Component extends DCLogic {
       showApp: st.view !== 'report',
       showReport: st.view === 'report',
       openReport: () => {
-        // Rebuild from scratch so pins added since the last export are on the sheets.
-        this.setState({ view: 'report', planComposites: {} }, () => this.compositeAll());
+        // Rebuild from scratch so pins and photos added since the last export are included.
+        this.setState({ view: 'report', planComposites: {}, photoComposites: {} }, () => this.compositeAll());
       },
       closeReport: () => this.setState({ view: 'app' }),
       isSheets: st.screen === 'sheets', isPlan: st.screen === 'plan', isObs: st.screen === 'obs' && !!sel,
@@ -1427,8 +1457,10 @@ class Component extends DCLogic {
           sheetLine: o.sheet + (sh ? ' — ' + sh.name : ''),
           gps: this.gpsOf(o), taken: this.takenOf(o),
           hasPhotos: o.photos.length > 0,
+          // Falls back to the full-resolution photo until its print-sized
+          // copy is ready, so the report never shows a gap while composing.
           photos: o.photos.map((p, j) => ({
-            url: p.url,
+            url: st.photoComposites[p.id] || p.url,
             caption: String(i + 1) + '.' + (j + 1) + (p.taken ? ' · ' + p.taken.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
           }))
         };
