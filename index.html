@@ -423,7 +423,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-15 · default name';
+const BUILD = '2026-08-17 · photo fix';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -486,7 +486,7 @@ class Component extends DCLogic {
       this.store = store;
       try {
         const saved = await store.get('state');
-        if (saved) this.setState(this.rehydrate(saved), () => this.renderSheet(this.state.sheetId));
+        if (saved) this.setState(await this.rehydrate(saved), () => this.renderSheet(this.state.sheetId));
         else this.renderSheet(this.state.sheetId);
       } catch (e) { this.renderSheet(this.state.sheetId); }
     }).catch(() => this.renderSheet(this.state.sheetId));
@@ -502,18 +502,21 @@ class Component extends DCLogic {
     document.removeEventListener('webkitfullscreenchange', this.onFsChange);
   }
 
-  rehydrate(saved) {
+  // Photo urls are rebuilt as data: URLs, not blob: ones, for the same
+  // reason as onPhoto — they must survive a background/foreground cycle on
+  // their own, with nothing left in a browser-side registry to go stale.
+  async rehydrate(saved) {
     const sheets = (saved.sheets || SHEETS).map(s => ({
       ...s, file: s.blob ? URL.createObjectURL(s.blob) : s.file
     }));
-    const obs = (saved.obs || []).map(o => ({
+    const obs = await Promise.all((saved.obs || []).map(async o => ({
       ...o,
-      photos: (o.photos || []).filter(p => p.blob).map(p => ({
+      photos: await Promise.all((o.photos || []).filter(p => p.blob).map(async p => ({
         ...p,
         taken: p.taken ? new Date(p.taken) : null,
-        url: URL.createObjectURL(p.blob)
-      }))
-    }));
+        url: await this.toDataUrl(p.blob)
+      })))
+    })));
     uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
     return {
       sheets, obs,
@@ -707,9 +710,12 @@ class Component extends DCLogic {
         photos: (await Promise.all((o.photos || []).map(async p => {
           const blob = await toBlob(p.data);
           if (!blob) return null;
+          // p.data is already a data: URL — reuse it rather than minting a
+          // blob: one, so a loaded photo is just as background-proof as a
+          // freshly captured or rehydrated one.
           return {
             id: p.id, blob,
-            url: URL.createObjectURL(blob),
+            url: p.data,
             taken: p.taken ? new Date(p.taken) : null,
             lat: p.lat ?? null, lon: p.lon ?? null
           };
@@ -970,9 +976,16 @@ class Component extends DCLogic {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     for (const f of files) {
-      const url = URL.createObjectURL(f);
+      // A data: URL rather than a blob: one — WebKit can quietly invalidate
+      // blob URLs for a backgrounded PWA even without reloading the page,
+      // which is what turned photos into broken-image icons after the app
+      // was closed and reopened. A data URL carries its own bytes, so there
+      // is no browser-side registry entry to go stale.
       let meta = {};
-      try { meta = this.exif ? await this.exif.readExif(f) : {}; } catch (err) { }
+      const [url] = await Promise.all([
+        this.toDataUrl(f),
+        (async () => { try { meta = this.exif ? await this.exif.readExif(f) : {}; } catch (err) { } })()
+      ]);
       const taken = (this.exif && this.exif.fmtExifDate(meta.taken)) || new Date(f.lastModified || Date.now());
       const photo = { id: ++uid, url, blob: f, taken, lat: meta.lat ?? null, lon: meta.lon ?? null };
       this.setState(st => ({
