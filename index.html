@@ -244,6 +244,9 @@ a:hover{color:#1a0fa0}
             </div>
 
             <div style="flex:0 0 auto;padding:12px 14px 16px;border-top:1px solid #E7E4DD;display:flex;flex-direction:column;gap:10px;background:#fff">
+              <sc-if value="{{ hasNote }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;line-height:1.4;color:#2215CC;font-weight:500">{{ note }}</div>
+              </sc-if>
               <div style="font-size:12px;color:#6b6963;line-height:1.4">{{ planHint }}</div>
               <div onClick="{{ togglePlacing }}" style="border-radius:4px;padding:13px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:{{ placeBtnBg }};color:{{ placeBtnFg }};border:1px solid #000;transition:background 160ms">{{ placeBtnLabel }}</div>
             </div>
@@ -311,6 +314,7 @@ a:hover{color:#1a0fa0}
                 <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Captured automatically</div>
                 <div style="display:flex;justify-content:space-between;gap:12px;font-size:12px"><span style="color:#6b6963">Plan location</span><span style="font-weight:500;text-align:right">{{ selLoc }}</span></div>
                 <div style="display:flex;justify-content:space-between;gap:12px;font-size:12px"><span style="color:#6b6963">Taken</span><span style="font-weight:500;text-align:right">{{ selTaken }}</span></div>
+                <div onClick="{{ startReloc }}" style="margin-top:3px;border:1px solid #C8C4BA;border-radius:3px;padding:9px;text-align:center;font-family:'Instrument Sans Cond';font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#2215CC;cursor:pointer;background:#fff">Relocate pin</div>
               </div>
 
               <div onClick="{{ backToPlan }}" style="border-radius:4px;padding:13px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:#000;color:#fff;border:1px solid #000">Save to report</div>
@@ -430,7 +434,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-17 · relocate pins';
+const BUILD = '2026-08-17 · relocate button';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -471,6 +475,7 @@ class Component extends DCLogic {
     isFs: false,
     confirmDel: null,
     confirmNew: false,
+    relocId: null,
     project: { ...PROJECT, date: today() },
     planImgs: {},
     planHi: {},
@@ -1240,7 +1245,7 @@ class Component extends DCLogic {
     if (i < 0 || st.sheets.length < 2) return;
     const next = st.sheets[(i + dir + st.sheets.length) % st.sheets.length];
     this._view = { z: 1, tx: 0, ty: 0 };
-    this.setState({ sheetId: next.id, zoom: 1, tx: 0, ty: 0, placing: false }, () => {
+    this.setState({ sheetId: next.id, zoom: 1, tx: 0, ty: 0, placing: false, relocId: null }, () => {
       this.applyView();
       this.renderSheet(next.id).then(() => this.prefetchNeighbours());
     });
@@ -1292,8 +1297,10 @@ class Component extends DCLogic {
       else this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
       this._moved = 0;
       // A touch landing on a pin arms a hold timer; if it fires before the
-      // finger moves away or a second finger lands, the pin picks up.
-      const near = this.nearestPin(e.clientX, e.clientY);
+      // finger moves away or a second finger lands, the pin picks up. Not
+      // while relocating — there the next tap is the new location, so a hold
+      // on some other pin would be two ways to move a pin at once.
+      const near = this.state.relocId == null ? this.nearestPin(e.clientX, e.clientY) : null;
       if (near) {
         this._pinCandidate = {
           obsId: near.o.id, pointerId: e.pointerId,
@@ -1439,6 +1446,20 @@ class Component extends DCLogic {
     const r = c.getBoundingClientRect();
     const nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
+    // Checked before the pin hit test — while relocating, a tap that happens
+    // to land near another pin still means "put it here", not "open that one".
+    const rid = this.state.relocId;
+    if (rid != null) {
+      const label = String(this.state.obs.findIndex(o => o.id === rid) + 1).padStart(2, '0');
+      this.setState(st => ({
+        obs: st.obs.map(o => o.id === rid ? { ...o, x: nx, y: ny } : o),
+        relocId: null
+      }), () => {
+        this.flushSave();
+        this.say('Observation ' + label + ' moved — hold the pin to nudge it.');
+      });
+      return;
+    }
     const near = this.nearestPin(e.clientX, e.clientY);
     if (near) { this.setState({ selId: near.o.id, screen: 'obs' }); return; }
     if (!this.state.placing) return;
@@ -1494,7 +1515,7 @@ class Component extends DCLogic {
         .filter(r => r.line),
       hasRecipients: (P.recipients || []).some(r => r.name || r.email),
 
-      goProject: () => this.setState({ screen: 'project', view: 'app' }),
+      goProject: () => this.setState({ screen: 'project', view: 'app', relocId: null }),
       projectFields: [
         { key: 'number', label: 'Project #', type: 'text', hint: 'Project #' },
         { key: 'name', label: 'Project Name', type: 'text', hint: 'Project Name' },
@@ -1521,7 +1542,7 @@ class Component extends DCLogic {
       closeReport: () => this.setState({ view: 'app' }),
       isSheets: st.screen === 'sheets', isPlan: st.screen === 'plan', isObs: st.screen === 'obs' && !!sel,
       sheetId: st.sheetId, obsCount: st.obs.length,
-      goSheets: () => this.setState({ screen: 'sheets', placing: false }),
+      goSheets: () => this.setState({ screen: 'sheets', placing: false, relocId: null }),
       backToPlan: () => sel && this.setState({ screen: 'plan', sheetId: sel.sheet }),
       deleteSel: () => this.setState(s => ({ obs: s.obs.filter(o => o.id !== s.selId), screen: 'plan' })),
 
@@ -1532,7 +1553,7 @@ class Component extends DCLogic {
         remove: (e) => this.removeSheet(s.id, e),
         open: () => {
           this._view = { z: 1, tx: 0, ty: 0 };
-          this.setState({ screen: 'plan', sheetId: s.id, zoom: 1, tx: 0, ty: 0 });
+          this.setState({ screen: 'plan', sheetId: s.id, zoom: 1, tx: 0, ty: 0, relocId: null });
           this.renderSheet(s.id);
         }
       })),
@@ -1583,14 +1604,27 @@ class Component extends DCLogic {
       onPtrMove: this.onPtrMove,
       onPtrUp: this.onPtrUp,
       placing: st.placing,
-      togglePlacing: () => this.setState(s => ({ placing: !s.placing })),
-      placeBtnLabel: st.placing ? 'Tap the plan to set the pin' : 'New observation here',
-      placeBtnBg: st.placing ? '#2215CC' : '#000',
+      // While relocating, the same bottom button becomes the way out — the
+      // next tap on the plan is the new location, so offering "new
+      // observation here" at the same time would be two conflicting meanings
+      // for one tap.
+      togglePlacing: () => {
+        if (st.relocId != null) { this.setState({ relocId: null, screen: 'obs' }); return; }
+        this.setState(s => ({ placing: !s.placing }));
+      },
+      placeBtnLabel: st.relocId != null ? 'Cancel move'
+        : (st.placing ? 'Tap the plan to set the pin' : 'New observation here'),
+      placeBtnBg: (st.placing || st.relocId != null) ? '#2215CC' : '#000',
       placeBtnFg: '#fff',
-      planHint: st.placing
-        ? 'Pin lands where you tap — pinch to zoom in first for room-level accuracy.'
-        : (sheet ? sheet.name : '') + ' · ' + pins.length + ' observation' + (pins.length === 1 ? '' : 's') + ' · pinch to zoom, drag to pan'
-          + (pins.length ? ' · press and hold a pin to move it' : ''),
+      planHint: st.relocId != null
+        ? 'Tap the new spot for observation ' + String(st.obs.findIndex(o => o.id === st.relocId) + 1).padStart(2, '0') + ' — pinch to zoom in first for room-level accuracy.'
+        : st.placing
+          ? 'Pin lands where you tap — pinch to zoom in first for room-level accuracy.'
+          : (sheet ? sheet.name : '') + ' · ' + pins.length + ' observation' + (pins.length === 1 ? '' : 's') + ' · pinch to zoom, drag to pan'
+            + (pins.length ? ' · press and hold a pin to move it' : ''),
+      startReloc: () => sel && this.setState({
+        relocId: sel.id, screen: 'plan', sheetId: sel.sheet, placing: false
+      }),
 
       sel: sel || { desc: '', sheet: '' },
       selNum: sel ? String(this.num(sel)).padStart(2, '0') : '',
