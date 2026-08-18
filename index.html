@@ -60,6 +60,7 @@ a:hover{color:#1a0fa0}
   .om-report-page{padding:24px!important;max-width:none!important}
 }
 .om-plan-pane:fullscreen,.om-plan-pane:-webkit-full-screen{width:100vw;height:100vh;background:#fff}
+[data-pin].om-relocating{filter:drop-shadow(0 0 10px rgba(34,21,204,.7))}
 .om-plan-appendix{display:block}
 .om-plan-page{display:block;margin-top:30px;padding-top:26px;border-top:2px solid #2215CC}
 .om-plan-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:12px}
@@ -217,7 +218,7 @@ a:hover{color:#1a0fa0}
                 <div class="om-plan-canvas" style="position:absolute;left:0;top:0;width:100%;transform-origin:0 0;transform:{{ planTransform }};will-change:transform">
                   <img src="{{ planSrc }}" alt="plan sheet" draggable="false" style="display:block;width:100%;height:auto;background:#fff;pointer-events:none;-webkit-user-drag:none" />
                   <sc-for list="{{ pins }}" as="p" hint-placeholder-count="0">
-                    <div data-pin="1" style="position:absolute;left:{{ p.left }};top:{{ p.top }};transform:scale({{ p.inv }}) translate(-50%,-100%);transform-origin:0 0;pointer-events:none;display:flex;flex-direction:column;align-items:center">
+                    <div data-pin="1" data-obs-id="{{ p.id }}" style="position:absolute;left:{{ p.left }};top:{{ p.top }};transform:scale({{ p.inv }}) translate(-50%,-100%);transform-origin:0 0;pointer-events:none;display:flex;flex-direction:column;align-items:center;transition:filter 120ms">
                       <div style="width:28px;height:28px;border-radius:50%;background:#2215CC;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">{{ p.num }}</div>
                       <div style="width:2px;height:9px;background:#2215CC"></div>
                     </div>
@@ -429,7 +430,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-17 · save on refresh';
+const BUILD = '2026-08-17 · relocate pins';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -1140,6 +1141,8 @@ class Component extends DCLogic {
   QUICKW = 700;         // rough first paint while the real one rasterises
   REPORT_PHOTO_W = 900; // longest edge for a photo printed in the report
   REPORT_PHOTO_Q = .72; // jpeg quality for report photos
+  LONGPRESS_MS = 500;       // hold time before a touched pin picks up
+  LONGPRESS_CANCEL_PX = 10; // movement before the hold that cancels it (a pan/tap, not a hold)
   _ptrs = new Map();
   _view = { z: 1, tx: 0, ty: 0 };
 
@@ -1254,6 +1257,32 @@ class Component extends DCLogic {
     });
   }
 
+  // Cancels a pending or in-progress pin relocate. If the pin had already
+  // been picked up, its live-dragged screen position is put back where it
+  // actually is — nothing was committed to state, so the DOM is the only
+  // thing that needs undoing.
+  cancelPinCandidate() {
+    clearTimeout(this._holdT);
+    this._holdT = null;
+    const c = this._pinCandidate;
+    this._pinCandidate = null;
+    if (c && c.fired && this._relocateEl) {
+      this._relocateEl.style.left = (c.origX * 100) + '%';
+      this._relocateEl.style.top = (c.origY * 100) + '%';
+      this._relocateEl.classList.remove('om-relocating');
+    }
+    this._relocateEl = null;
+  }
+
+  armRelocate() {
+    const c = this._pinCandidate;
+    if (!c) return;
+    c.fired = true;
+    this._relocateEl = (this._surf && this._surf.querySelector('[data-obs-id="' + c.obsId + '"]')) || null;
+    if (this._relocateEl) this._relocateEl.classList.add('om-relocating');
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) { } }
+  }
+
   onPtrDown = (e) => {
     this._surf = e.currentTarget;
     // Only sync from state when a gesture actually begins. Re-reading it when
@@ -1262,9 +1291,25 @@ class Component extends DCLogic {
       if (this._wheelT) { clearTimeout(this._wheelT); this._wheelT = null; }
       else this._view = { z: this.state.zoom, tx: this.state.tx, ty: this.state.ty };
       this._moved = 0;
+      // A touch landing on a pin arms a hold timer; if it fires before the
+      // finger moves away or a second finger lands, the pin picks up.
+      const near = this.nearestPin(e.clientX, e.clientY);
+      if (near) {
+        this._pinCandidate = {
+          obsId: near.o.id, pointerId: e.pointerId,
+          downX: e.clientX, downY: e.clientY,
+          origX: near.o.x, origY: near.o.y,
+          x: near.o.x, y: near.o.y,
+          fired: false
+        };
+        clearTimeout(this._holdT);
+        this._holdT = setTimeout(() => this.armRelocate(), this.LONGPRESS_MS);
+      }
     }
     this._ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this._ptrs.size === 2) {
+      // A second finger means this is a pinch, not a hold on one pin.
+      this.cancelPinCandidate();
       const [a, b] = [...this._ptrs.values()];
       this._pinch = {
         d: Math.hypot(a.x - b.x, a.y - b.y) || 1,
@@ -1280,6 +1325,30 @@ class Component extends DCLogic {
     const cur = { x: e.clientX, y: e.clientY };
     this._ptrs.set(e.pointerId, cur);
     this._moved += Math.hypot(cur.x - prev.x, cur.y - prev.y);
+
+    const c = this._pinCandidate;
+    if (c && c.pointerId === e.pointerId) {
+      if (!c.fired) {
+        // Moving before the hold fires means this was a pan or a tap
+        // headed somewhere else, not a hold — let it fall through below.
+        const d = Math.hypot(e.clientX - c.downX, e.clientY - c.downY);
+        if (d > this.LONGPRESS_CANCEL_PX) { clearTimeout(this._holdT); this._holdT = null; this._pinCandidate = null; }
+      } else {
+        // Picked up — follow the finger and skip panning the canvas.
+        const canvas = this.canvasEl();
+        if (canvas) {
+          const r = canvas.getBoundingClientRect();
+          c.x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+          c.y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+          if (this._relocateEl) {
+            this._relocateEl.style.left = (c.x * 100) + '%';
+            this._relocateEl.style.top = (c.y * 100) + '%';
+          }
+        }
+        return;
+      }
+    }
+
     const surf = this._surf || e.currentTarget;
     const r = surf.getBoundingClientRect();
     if (this._ptrs.size >= 2 && this._pinch) {
@@ -1304,6 +1373,26 @@ class Component extends DCLogic {
     const solo = this._ptrs.size === 1;
     this._ptrs.delete(e.pointerId);
     if (this._ptrs.size < 2) this._pinch = null;
+
+    const c = this._pinCandidate;
+    if (c && c.pointerId === e.pointerId) {
+      clearTimeout(this._holdT);
+      this._holdT = null;
+      this._pinCandidate = null;
+      if (c.fired) {
+        // Relocate completed — this was a drag, not a tap, so commit the
+        // new spot and skip the usual tap handling below entirely.
+        if (this._relocateEl) this._relocateEl.classList.remove('om-relocating');
+        this._relocateEl = null;
+        this.setState(st => ({
+          obs: st.obs.map(o => o.id === c.obsId ? { ...o, x: c.x, y: c.y } : o)
+        }), () => this.flushSave());
+        return;
+      }
+      // Never fired — an ordinary quick tap. Fall through so the normal
+      // tap flow opens the pin, same as it always has.
+    }
+
     if (this._ptrs.size === 0) this.commitView(solo && this._moved < 8, e);
   };
 
@@ -1325,22 +1414,32 @@ class Component extends DCLogic {
     this._wheelT = setTimeout(() => { this._wheelT = null; this.commitView(false); }, 140);
   };
 
+  // Markers are drawn above their anchor at a constant screen size (they
+  // counter-scale against zoom), so the hit test is against where the
+  // circle actually appears rather than the anchor point itself, and takes
+  // the nearest one if two overlap. Shared by tap-to-open and the
+  // long-press-to-relocate hit test on pointerdown.
+  nearestPin(cx, cy) {
+    const c = this.canvasEl();
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return this.state.obs
+      .filter(o => o.sheet === this.state.sheetId)
+      .map(o => {
+        const px = r.left + o.x * r.width, py = r.top + o.y * r.height - 23;
+        return { o, d: Math.hypot(cx - px, cy - py) };
+      })
+      .filter(h => h.d <= 26)
+      .sort((a, b) => a.d - b.d)[0] || null;
+  }
+
   handleTap(e) {
     const c = this.canvasEl();
     if (!c) return;
     const r = c.getBoundingClientRect();
     const nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
-    // Markers are drawn above their anchor at a constant screen size, so test
-    // against the circle where it appears, and take the nearest if two overlap.
-    const near = this.state.obs
-      .filter(o => o.sheet === this.state.sheetId)
-      .map(o => {
-        const px = r.left + o.x * r.width, py = r.top + o.y * r.height - 23;
-        return { o, d: Math.hypot(e.clientX - px, e.clientY - py) };
-      })
-      .filter(h => h.d <= 26)
-      .sort((a, b) => a.d - b.d)[0];
+    const near = this.nearestPin(e.clientX, e.clientY);
     if (near) { this.setState({ selId: near.o.id, screen: 'obs' }); return; }
     if (!this.state.placing) return;
     const o = { id: ++uid, sheet: this.state.sheetId, x: nx, y: ny, discipline: 'Architectural', status: 'Open', desc: '', photos: [] };
@@ -1354,7 +1453,7 @@ class Component extends DCLogic {
     const P = st.project;
     const sheet = this.sheet(st.sheetId);
     const pins = st.obs.filter(o => o.sheet === st.sheetId).map(o => ({
-      num: this.num(o), left: (o.x * 100).toFixed(3) + '%', top: (o.y * 100).toFixed(3) + '%',
+      id: o.id, num: this.num(o), left: (o.x * 100).toFixed(3) + '%', top: (o.y * 100).toFixed(3) + '%',
       inv: (1 / st.zoom).toFixed(4)
     }));
     const selPhotos = sel ? sel.photos.map(p => ({
@@ -1490,7 +1589,8 @@ class Component extends DCLogic {
       placeBtnFg: '#fff',
       planHint: st.placing
         ? 'Pin lands where you tap — pinch to zoom in first for room-level accuracy.'
-        : (sheet ? sheet.name : '') + ' · ' + pins.length + ' observation' + (pins.length === 1 ? '' : 's') + ' · pinch to zoom, drag to pan',
+        : (sheet ? sheet.name : '') + ' · ' + pins.length + ' observation' + (pins.length === 1 ? '' : 's') + ' · pinch to zoom, drag to pan'
+          + (pins.length ? ' · press and hold a pin to move it' : ''),
 
       sel: sel || { desc: '', sheet: '' },
       selNum: sel ? String(this.num(sel)).padStart(2, '0') : '',
