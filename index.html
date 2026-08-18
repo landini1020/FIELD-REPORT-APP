@@ -407,7 +407,12 @@ a:hover{color:#1a0fa0}
               <div style="font-family:'Darker Grotesque',sans-serif;font-weight:700;font-size:28px;line-height:1;letter-spacing:-.01em">{{ sh.id }} — {{ sh.name }}</div>
               <div style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;white-space:nowrap">{{ sh.countLabel }}</div>
             </div>
-            <img src="{{ sh.src }}" alt="{{ sh.id }} plan sheet" />
+            <sc-if value="{{ sh.hasSrc }}" hint-placeholder-val="{{ true }}">
+              <img src="{{ sh.src }}" alt="{{ sh.id }} plan sheet" />
+            </sc-if>
+            <sc-if value="{{ sh.noSrc }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid #E7E4DD;background:#FAF9F6;padding:26px;text-align:center;font-size:12.5px;color:#6b6963;line-height:1.5">This sheet couldn’t be rendered, so it isn’t shown here. Its observations are still listed above.</div>
+            </sc-if>
           </div>
         </sc-for>
       </div>
@@ -796,8 +801,10 @@ class Component extends DCLogic {
       uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
       const sheetId = sheets.some(s => s.id === data.sheetId) ? data.sheetId : (sheets[0] && sheets[0].id);
       this.setState({
-        sheets: sheets.length ? sheets : SHEETS.slice(),
-        obs, sheetId,
+        // Honour the file even when it holds no sheets — substituting the
+        // built-in demo plans here meant saving an empty new report and
+        // loading it back handed you A101-A103 you never added.
+        sheets, obs, sheetId: sheetId || '',
         // v3 carries the whole project block; older files only had a name and
         // number at the top level.
         project: {
@@ -810,8 +817,9 @@ class Component extends DCLogic {
           recipients: normRecipients((data.project || {}).recipients)
         },
         selId: obs.length ? obs[0].id : null,
-        screen: 'sheets', view: 'app', placing: false, zoom: 1,
-        planImgs: {}, planHi: {}, planHiW: {}, planErr: {}, planComposites: {}, loading: {}
+        screen: 'sheets', view: 'app', placing: false, zoom: 1, relocId: null,
+        planImgs: {}, planHi: {}, planHiW: {}, planNativeW: {}, planErr: {},
+        planComposites: {}, photoComposites: {}, loading: {}
       }, () => {
         this.renderSheet(this.state.sheetId);
         this.say('Loaded ' + obs.length + ' observation' + (obs.length === 1 ? '' : 's') + ' from ' + f.name);
@@ -865,19 +873,32 @@ class Component extends DCLogic {
 
   // Staged: a rough pass so the sheet appears at once, then a readable base,
   // then sharper re-renders driven by how far the user has zoomed.
-  async renderSheet(id, hi) {
+  renderSheet(id, hi) {
     const s = this.sheet(id);
-    if (!s) return null;
+    if (!s) return Promise.resolve(null);
     // `hi` is a target pixel width (true == the old fixed 2600) so the page can
     // be re-rendered sharper as the user zooms further in.
     const want = hi ? (typeof hi === 'number' ? hi : 2600) : 0;
     const busy = hi ? 'hi:' + id : id;
     if (hi) {
-      if ((this.state.planHiW[id] || 0) >= want) return this.state.planHi[id];
+      if ((this.state.planHiW[id] || 0) >= want) return Promise.resolve(this.state.planHi[id]);
     } else if (this.state.planImgs[id]) {
-      return this.state.planImgs[id];
+      return Promise.resolve(this.state.planImgs[id]);
     }
-    if (this.state.loading[busy]) return null;
+    // Whoever asks while a render is already running gets that same render,
+    // rather than null. Handing back null made the caller think the sheet had
+    // failed — the report read it as "skip this sheet" and exported a plan
+    // page with no image on it at all.
+    this._renders = this._renders || {};
+    if (this._renders[busy]) return this._renders[busy];
+    const p = this.rasterizeSheet(id, s, hi, want, busy);
+    this._renders[busy] = p;
+    const clear = () => { delete this._renders[busy]; };
+    p.then(clear, clear);
+    return p;
+  }
+
+  async rasterizeSheet(id, s, hi, want, busy) {
     const isPdf = s.isPdf != null ? s.isPdf : /\.pdf$/i.test(s.file);
     // A raster sheet has no detail beyond its own pixels — nothing to re-render.
     if (isPdf === false && hi) return this.state.planImgs[id] || s.file;
@@ -1010,8 +1031,15 @@ class Component extends DCLogic {
   sel() { return this.state.obs.find(o => o.id === this.state.selId); }
   num(o) { return this.state.obs.indexOf(o) + 1; }
 
-  patchSel(patch) {
-    this.setState(st => ({ obs: st.obs.map(o => o.id === st.selId ? { ...o, ...patch } : o) }));
+  // `flush` for one-shot edits (a status tap, deleting a photo) so they are
+  // written straight away instead of riding the debounce and depending on the
+  // page-teardown flush to land. Typing stays debounced — flushing per
+  // keystroke would rewrite every photo blob in the payload each time.
+  patchSel(patch, flush) {
+    this.setState(
+      st => ({ obs: st.obs.map(o => o.id === st.selId ? { ...o, ...patch } : o) }),
+      flush ? () => this.flushSave() : undefined
+    );
   }
 
   stampOf(o) {
@@ -1347,6 +1375,7 @@ class Component extends DCLogic {
           const r = canvas.getBoundingClientRect();
           c.x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
           c.y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+          c.dragged = true;
           if (this._relocateEl) {
             this._relocateEl.style.left = (c.x * 100) + '%';
             this._relocateEl.style.top = (c.y * 100) + '%';
@@ -1386,18 +1415,25 @@ class Component extends DCLogic {
       clearTimeout(this._holdT);
       this._holdT = null;
       this._pinCandidate = null;
-      if (c.fired) {
-        // Relocate completed — this was a drag, not a tap, so commit the
-        // new spot and skip the usual tap handling below entirely.
-        if (this._relocateEl) this._relocateEl.classList.remove('om-relocating');
-        this._relocateEl = null;
+      if (this._relocateEl) this._relocateEl.classList.remove('om-relocating');
+      this._relocateEl = null;
+      if (c.fired && c.dragged) {
+        // Actually dragged somewhere — commit the new spot and skip the tap
+        // handling below. The view is committed in the same setState: this
+        // path used to return without commitView, so a wheel zoom whose
+        // debounced commit was cancelled at pointerdown was never written to
+        // state and the plan snapped back on the next render.
+        const v = this._view;
         this.setState(st => ({
-          obs: st.obs.map(o => o.id === c.obsId ? { ...o, x: c.x, y: c.y } : o)
-        }), () => this.flushSave());
+          obs: st.obs.map(o => o.id === c.obsId ? { ...o, x: c.x, y: c.y } : o),
+          zoom: v.z, tx: v.tx, ty: v.ty
+        }), () => { this.flushSave(); this.ensureDetail(); });
         return;
       }
-      // Never fired — an ordinary quick tap. Fall through so the normal
-      // tap flow opens the pin, same as it always has.
+      // Either never armed, or armed and released without moving — a slow
+      // tap, which is easy to do with gloves on. Fall through so the normal
+      // tap flow still opens the observation rather than silently doing
+      // nothing.
     }
 
     if (this._ptrs.size === 0) this.commitView(solo && this._moved < 8, e);
@@ -1480,7 +1516,7 @@ class Component extends DCLogic {
     const selPhotos = sel ? sel.photos.map(p => ({
       url: p.url,
       stamp: p.taken ? this.fmtTime(p.taken) : 'no metadata',
-      remove: () => this.patchSel({ photos: sel.photos.filter(q => q.id !== p.id) })
+      remove: () => this.patchSel({ photos: sel.photos.filter(q => q.id !== p.id) }, true)
     })) : [];
 
     return {
@@ -1544,7 +1580,10 @@ class Component extends DCLogic {
       sheetId: st.sheetId, obsCount: st.obs.length,
       goSheets: () => this.setState({ screen: 'sheets', placing: false, relocId: null }),
       backToPlan: () => sel && this.setState({ screen: 'plan', sheetId: sel.sheet }),
-      deleteSel: () => this.setState(s => ({ obs: s.obs.filter(o => o.id !== s.selId), screen: 'plan' })),
+      deleteSel: () => this.setState(
+        s => ({ obs: s.obs.filter(o => o.id !== s.selId), screen: 'plan' }),
+        () => this.flushSave()
+      ),
 
       sheetCards: st.sheets.map(s => ({
         id: s.id, name: s.name,
@@ -1636,13 +1675,13 @@ class Component extends DCLogic {
       micColor: st.listening ? '#FA6500' : '#2215CC',
       stampNote: 'Time is read from each photo\u2019s own metadata — nothing to fill in.',
       disciplineOpts: DISCIPLINES.map(d => ({
-        label: d, pick: () => this.patchSel({ discipline: d }),
+        label: d, pick: () => this.patchSel({ discipline: d }, true),
         bg: sel && sel.discipline === d ? '#000' : '#fff',
         fg: sel && sel.discipline === d ? '#fff' : '#3a3833',
         border: sel && sel.discipline === d ? '#000' : '#E7E4DD'
       })),
       statusOpts: STATUSES.map(s => ({
-        label: s.label, pick: () => this.patchSel({ status: s.label }),
+        label: s.label, pick: () => this.patchSel({ status: s.label }, true),
         bg: sel && sel.status === s.label ? s.bg : '#fff',
         fg: sel && sel.status === s.label ? s.fg : '#3a3833',
         border: sel && sel.status === s.label ? s.border : '#E7E4DD'
@@ -1676,6 +1715,10 @@ class Component extends DCLogic {
         return {
           id: s.id, name: s.name,
           src: st.planComposites[s.id] || st.planImgs[s.id] || '',
+          // A sheet that genuinely failed to rasterise would otherwise render
+          // as <img src=""> — a broken-image icon in a client-facing PDF.
+          hasSrc: !!(st.planComposites[s.id] || st.planImgs[s.id]),
+          noSrc: !(st.planComposites[s.id] || st.planImgs[s.id]),
           countLabel: n + ' observation' + (n === 1 ? '' : 's')
         };
       }),
