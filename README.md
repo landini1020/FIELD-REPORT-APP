@@ -59,4 +59,24 @@ pdf.js version, replace those files and bump `CACHE` in `sw.js`.
 
 - Rendering a heavy CAD sheet the first time takes a few seconds, and again the first time you zoom past each detail step.
 - Data lives only on that one phone unless you use **Save** on the Sheets screen, which writes the whole walk to one file you can back up or open on another phone.
-- iOS may evict the stored photos if the device gets very low on space. Export the report, or Save a project file, the same day you walk the site.
+
+## Does it keep my work?
+
+Every change is written to the phone's own database. Photos, and one-shot edits
+like status or deleting an observation, are written the moment you make them;
+typing is written a moment after you stop. Leaving or closing the app forces
+anything still pending to be written immediately, so closing and reopening does
+not lose the walk.
+
+The app asks the browser for **persistent storage**, which exempts it from being
+cleared when the device runs low on space. Browsers decide whether to grant that
+— a Home Screen web app is far more likely to get it than a normal Safari tab.
+The Sheets screen reports which you have, along with the time of the last save:
+
+- *Storage protected* — the browser will not clear it to reclaim space.
+- *Storage is best effort* — it still saves, but iOS may clear it if the device
+  runs very low. Use **Save** to write a project file for anything you cannot
+  afford to lose.
+
+That last point is the reason the project file exists. It is the only copy that
+lives outside the phone.

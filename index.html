@@ -169,9 +169,12 @@ a:hover{color:#1a0fa0}
               </sc-if>
               <div style="font-size:11px;color:#8a8880;line-height:1.4">Save writes one file with every sheet, pin and photo — keep it as a backup or open it on another phone.</div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:6px;border-top:1px solid #F0EEE8;margin-top:2px">
-                <div style="font-size:11px;color:#8a8880;line-height:1.4">Also saved on this device automatically.</div>
+                <div style="font-size:11px;line-height:1.4;color:{{ savedColor }}">{{ savedLabel }}</div>
                 <div onClick="{{ resetAll }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer;white-space:nowrap">Reset</div>
               </div>
+              <sc-if value="{{ hasStorageLabel }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px;color:#8a8880;line-height:1.4">{{ storageLabel }}</div>
+              </sc-if>
             </div>
           </div>
         </sc-if>
@@ -466,7 +469,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-18 · desktop view';
+const BUILD = '2026-08-18 · durable storage';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -508,6 +511,9 @@ class Component extends DCLogic {
     confirmDel: null,
     confirmNew: false,
     relocId: null,
+    persisted: null,
+    savedAt: null,
+    saveFailed: false,
     project: { ...PROJECT, date: today() },
     planImgs: {},
     planHi: {},
@@ -527,6 +533,15 @@ class Component extends DCLogic {
   };
 
   componentDidMount() {
+    // Without this the walk lives in "best effort" storage, which the browser
+    // is free to evict when the device runs low — the one remaining way to
+    // lose a day's work that the app itself can do something about.
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persisted()
+        .then(p => p ? true : navigator.storage.persist())
+        .then(p => this.setState({ persisted: !!p }))
+        .catch(() => { });
+    }
     import('./exif.js').then(m => { this.exif = m; });
     import('./store.js').then(async (store) => {
       this.store = store;
@@ -631,7 +646,11 @@ class Component extends DCLogic {
         photos: (o.photos || []).map(p => ({ id: p.id, taken: p.taken ? p.taken.toISOString() : null, blob: p.blob || null }))
       }))
     };
-    this.store.set('state', payload).catch(() => { });
+    // savedAt is deliberately not part of the maybeSave signature, so
+    // recording it cannot itself schedule another save.
+    this.store.set('state', payload)
+      .then(() => this.setState({ savedAt: Date.now(), saveFailed: false }))
+      .catch(() => this.setState({ saveFailed: true }));
   }
 
   resetAll = () => {
@@ -1556,6 +1575,21 @@ class Component extends DCLogic {
       hasClient: !!(P.clientName || P.clientNumber),
 
       build: BUILD,
+      // Surfaced because "did that actually save?" is otherwise unanswerable
+      // from inside the app, and this walk cannot be recreated.
+      savedLabel: st.saveFailed
+        ? 'Could not save to this device — export a project file now.'
+        : (st.savedAt
+          ? 'Saved on this device at ' + new Date(st.savedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+          : 'Saved on this device automatically.'),
+      saveFailed: st.saveFailed,
+      savedColor: st.saveFailed ? '#72004C' : '#8a8880',
+      storageLabel: st.persisted === true
+        ? 'Storage protected — the browser will not clear it to reclaim space.'
+        : (st.persisted === false
+          ? 'Storage is best effort — iOS may clear it if the device runs very low. Save a project file for anything you cannot lose.'
+          : ''),
+      hasStorageLabel: st.persisted !== null,
       isProject: st.screen === 'project',
 
       recipientRows: (P.recipients || []).map((r, i) => ({
