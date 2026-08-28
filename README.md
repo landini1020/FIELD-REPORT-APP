@@ -60,6 +60,28 @@ pdf.js version, replace those files and bump `CACHE` in `sw.js`.
 - Rendering a heavy CAD sheet the first time takes a few seconds, and again the first time you zoom past each detail step.
 - Data lives only on that one phone unless you use **Save** on the Sheets screen, which writes the whole walk to one file you can back up or open on another phone.
 
+## Recipients
+
+Add them one at a time, or **Import list** on the Project screen to read them
+out of a file — `.xlsx`, `.csv`, `.tsv`, `.txt` or `.docx`.
+
+Any line holding an email address becomes a recipient and whatever else is on
+that line becomes the name, so all of these work without any set-up:
+
+```
+Name          Email                      ← header row, ignored
+Hank Vacca    hvacca@praterengr.com      ← spreadsheet columns
+Marcus Webb <mwebb@structuralco.com>     ← Outlook style
+Sofia Herrera, sherrera@structuralco.com ← comma separated
+tolson@mepgroup.com                      ← bare address, no name
+```
+
+Anyone already on the list is skipped, so re-importing an updated sheet only
+adds the new people. Office files are unpacked in the app itself rather than
+through a library, so this works with no signal like everything else — but the
+old binary `.doc`/`.xls` formats can't be read, and the app will say so and ask
+for a re-save.
+
 ## Projects and past reports
 
 **Projects** on the Sheets screen holds two things.

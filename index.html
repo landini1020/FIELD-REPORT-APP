@@ -266,8 +266,15 @@ a:hover{color:#1a0fa0}
               <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
                   <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Recipients</div>
-                  <div onClick="{{ addRecipient }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2215CC;cursor:pointer;padding:2px 0">+ Add recipient</div>
+                  <div style="display:flex;align-items:center;gap:14px">
+                    <label style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2215CC;cursor:pointer;padding:2px 0;white-space:nowrap">
+                      Import list
+                      <input type="file" accept=".csv,.tsv,.txt,.xlsx,.docx" onChange="{{ onRecipientsFile }}" style="display:none" />
+                    </label>
+                    <div onClick="{{ addRecipient }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2215CC;cursor:pointer;padding:2px 0;white-space:nowrap">+ Add</div>
+                  </div>
                 </div>
+                <div style="font-size:11px;color:#8a8880;line-height:1.45">Import a spreadsheet (.xlsx/.csv) or Word list (.docx) — any line with an email becomes a recipient, and anything already on the list is skipped.</div>
                 <sc-for list="{{ recipientRows }}" as="r" hint-placeholder-count="1">
                   <div style="display:flex;flex-direction:column;gap:6px;border:1px solid #E7E4DD;border-radius:3px;padding:10px;background:#FAF9F6">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -535,7 +542,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-28 · projects + history';
+const BUILD = '2026-08-28 · import recipients';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -961,6 +968,185 @@ class Component extends DCLogic {
       r.readAsDataURL(blob);
     });
   }
+
+  // ---- Reading a recipient list out of a file -----------------------------
+  // .xlsx and .docx are both zip archives of XML. Unpacking them here rather
+  // than pulling in a spreadsheet library keeps the app working with no
+  // signal, which a CDN dependency would quietly break.
+
+  unesc(s) {
+    return String(s)
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/&#(\d+);/g, (m, d) => String.fromCharCode(+d))
+      .replace(/&amp;/g, '&');
+  }
+
+  async inflateRaw(bytes) {
+    const ds = new DecompressionStream('deflate-raw');
+    const stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  // Pulls just the entries we need out of a zip, walking the central directory.
+  async unzip(file, wanted) {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const dv = new DataView(buf.buffer);
+    let eocd = -1;
+    for (let i = buf.length - 22; i >= 0 && i > buf.length - 66000; i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('not a zip');
+    const count = dv.getUint16(eocd + 10, true);
+    let off = dv.getUint32(eocd + 16, true);
+    const out = {};
+    for (let i = 0; i < count && off + 46 <= buf.length; i++) {
+      if (dv.getUint32(off, true) !== 0x02014b50) break;
+      const method = dv.getUint16(off + 10, true);
+      const csize = dv.getUint32(off + 20, true);
+      const nlen = dv.getUint16(off + 28, true);
+      const elen = dv.getUint16(off + 30, true);
+      const clen = dv.getUint16(off + 32, true);
+      const lho = dv.getUint32(off + 42, true);
+      const name = new TextDecoder().decode(buf.subarray(off + 46, off + 46 + nlen));
+      if (wanted(name)) {
+        const lnlen = dv.getUint16(lho + 26, true);
+        const lelen = dv.getUint16(lho + 28, true);
+        const start = lho + 30 + lnlen + lelen;
+        const raw = buf.subarray(start, start + csize);
+        out[name] = method === 0 ? raw : await this.inflateRaw(raw);
+      }
+      off += 46 + nlen + elen + clen;
+    }
+    return out;
+  }
+
+  // Rows become lines and cells become tabs, so a name and an email sitting
+  // side by side in a spreadsheet stay on the same line for the parser.
+  xlsxToText(files) {
+    const dec = new TextDecoder();
+    const shared = [];
+    if (files['xl/sharedStrings.xml']) {
+      dec.decode(files['xl/sharedStrings.xml']).replace(/<si>([\s\S]*?)<\/si>/g, (m, inner) => {
+        let s = '';
+        inner.replace(/<t[^>]*>([\s\S]*?)<\/t>/g, (m2, t) => { s += t; return ''; });
+        shared.push(this.unesc(s));
+        return '';
+      });
+    }
+    const key = Object.keys(files).find(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k));
+    if (!key) return '';
+    const lines = [];
+    dec.decode(files[key]).replace(/<row[^>]*>([\s\S]*?)<\/row>/g, (m, row) => {
+      const cells = [];
+      row.replace(/<c\b([^>]*)>([\s\S]*?)<\/c>/g, (m2, attrs, body) => {
+        const t = (attrs.match(/t="([^"]+)"/) || [])[1];
+        let val = '';
+        if (t === 's') {
+          const idx = (body.match(/<v>(\d+)<\/v>/) || [])[1];
+          val = idx != null ? (shared[+idx] || '') : '';
+        } else if (t === 'inlineStr') {
+          body.replace(/<t[^>]*>([\s\S]*?)<\/t>/g, (m3, x) => { val += x; return ''; });
+          val = this.unesc(val);
+        } else {
+          val = this.unesc((body.match(/<v>([\s\S]*?)<\/v>/) || [])[1] || '');
+        }
+        cells.push(val);
+        return '';
+      });
+      lines.push(cells.join('\t'));
+      return '';
+    });
+    return lines.join('\n');
+  }
+
+  docxToText(files) {
+    const xml = new TextDecoder().decode(files['word/document.xml'] || new Uint8Array());
+    return this.unesc(xml
+      .replace(/<\/w:tc>/g, '\t')
+      .replace(/<\/w:p>/g, '\n')
+      .replace(/<w:br\b[^>]*\/?>/g, '\n')
+      .replace(/<[^>]+>/g, ''));
+  }
+
+  async fileToText(f) {
+    const name = (f.name || '').toLowerCase();
+    if (/\.(csv|tsv|txt)$/.test(name) || /^text\//.test(f.type || '')) return f.text();
+    if (/\.(xlsx|docx)$/.test(name)) {
+      if (typeof DecompressionStream === 'undefined') {
+        throw new Error('This browser cannot open Office files — save the list as CSV.');
+      }
+      const isSheet = /\.xlsx$/.test(name);
+      const files = await this.unzip(f, n => isSheet
+        ? (n === 'xl/sharedStrings.xml' || /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
+        : n === 'word/document.xml');
+      return isSheet ? this.xlsxToText(files) : this.docxToText(files);
+    }
+    if (/\.(doc|xls)$/.test(name)) {
+      throw new Error('Old .doc/.xls files can’t be read — re-save as .docx, .xlsx or CSV.');
+    }
+    return f.text();
+  }
+
+  // Anything with an email on it counts as a row; whatever else is on that
+  // line becomes the name. Handles "Name <a@b.com>", comma/tab separated
+  // columns, and a bare list of addresses. Lines with no email — headers,
+  // titles, blank rows — are simply ignored.
+  parseRecipients(text) {
+    const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+    const out = [];
+    String(text).split(/\r?\n/).forEach(raw => {
+      const line = raw.trim();
+      if (!line) return;
+      const m = line.match(EMAIL);
+      if (!m) return;
+      const email = m[0];
+      let name = (line.slice(0, m.index) + ' ' + line.slice(m.index + email.length))
+        .replace(/[<>"']/g, ' ')
+        .replace(/[,;\t|]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (name.toLowerCase() === email.toLowerCase()) name = '';
+      out.push({ name, email });
+    });
+    return out;
+  }
+
+  onRecipientsFile = async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      this.say('Reading ' + f.name + '…');
+      const found = this.parseRecipients(await this.fileToText(f));
+      if (!found.length) {
+        this.say('No email addresses found in ' + f.name + '.');
+        return;
+      }
+      const existing = new Set((this.state.project.recipients || []).map(r => (r.email || '').toLowerCase()));
+      const added = [];
+      found.forEach(r => {
+        const key = r.email.toLowerCase();
+        if (existing.has(key)) return;   // already on the list, and no duplicates within the file
+        existing.add(key);
+        added.push({ id: ++uid, name: r.name, email: r.email });
+      });
+      const skipped = found.length - added.length;
+      if (!added.length) {
+        this.say('Everyone in ' + f.name + ' is already on the list.');
+        return;
+      }
+      this.setState(s => ({
+        project: { ...s.project, recipients: [...(s.project.recipients || []), ...added] }
+      }), () => {
+        this.flushSave();
+        this.say('Added ' + added.length + ' recipient' + (added.length === 1 ? '' : 's')
+          + ' from ' + f.name + (skipped ? ' · skipped ' + skipped + ' already listed' : ''));
+      });
+    } catch (err) {
+      this.say((err && err.message) || 'Could not read that file.');
+    }
+  };
 
   // A whole-project file so a walk can be backed up off the phone, moved to
   // another device, or reopened after iOS evicts the on-device photos.
@@ -1857,6 +2043,7 @@ class Component extends DCLogic {
         }))
       })),
       noRecipients: !(P.recipients || []).length,
+      onRecipientsFile: this.onRecipientsFile,
       addRecipient: () => this.setState(s => ({
         project: { ...s.project, recipients: [...(s.project.recipients || []), { id: ++uid, name: '', email: '' }] }
       })),
