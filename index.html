@@ -130,7 +130,10 @@ a:hover{color:#1a0fa0}
           <div class="om-col" style="flex:1;overflow-y:auto;padding:18px 18px 24px;display:flex;flex-direction:column;gap:10px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
               <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Sheets</div>
-              <div onClick="{{ newReport }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer;white-space:nowrap">{{ newReportLabel }}</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div onClick="{{ goProjects }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2215CC;cursor:pointer;white-space:nowrap">Projects</div>
+                <div onClick="{{ newReport }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer;white-space:nowrap">{{ newReportLabel }}</div>
+              </div>
             </div>
             <sc-if value="{{ noSheets }}" hint-placeholder-val="{{ false }}">
               <div style="font-size:12px;color:#8a8880;line-height:1.45;padding:2px 0 2px">No sheets yet — upload a plan below to get started.</div>
@@ -179,17 +182,80 @@ a:hover{color:#1a0fa0}
           </div>
         </sc-if>
 
+        <sc-if value="{{ isProjects }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+            <div style="flex:0 0 auto;border-bottom:1px solid #E7E4DD">
+              <div class="om-col" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px">
+                <div onClick="{{ goSheets }}" style="font-size:13px;font-weight:600;color:#2215CC;cursor:pointer;padding:4px 2px">‹ Sheets</div>
+                <div style="font-size:13px;font-weight:600">Projects</div>
+                <div style="width:46px"></div>
+              </div>
+            </div>
+            <div class="om-col" style="flex:1;overflow-y:auto;padding:16px 16px 26px;display:flex;flex-direction:column;gap:20px">
+
+              <sc-if value="{{ hasNote }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;line-height:1.4;color:#2215CC;font-weight:500">{{ note }}</div>
+              </sc-if>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Your projects</div>
+                  <div onClick="{{ saveTemplate }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2215CC;cursor:pointer;white-space:nowrap">+ Save current</div>
+                </div>
+                <div style="font-size:11px;color:#8a8880;line-height:1.45">Tap one to fill in the project details and recipients for a new walk.</div>
+                <sc-for list="{{ templateCards }}" as="t" hint-placeholder-count="2">
+                  <div onClick="{{ t.apply }}" style="border:1px solid #E7E4DD;border-radius:4px;padding:13px;display:flex;flex-direction:column;gap:5px;cursor:pointer;background:#fff" style-hover="box-shadow:0 4px 14px rgba(0,0,0,.09);transform:translateY(-2px)">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                      <div style="font-size:14px;font-weight:600">{{ t.label }}</div>
+                      <div onClick="{{ t.remove }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer;white-space:nowrap">Remove</div>
+                    </div>
+                    <div style="font-size:12px;color:#6b6963;line-height:1.4">{{ t.detail }}</div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ noTemplates }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12px;color:#8a8880;line-height:1.45;border:1px dashed #C8C4BA;border-radius:4px;padding:14px;background:#FAF9F6">None yet. Fill in the project details, then tap “Save current” to reuse them next time.</div>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E7E4DD;padding-top:16px">
+                <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">Past reports</div>
+                <div style="font-size:11px;color:#8a8880;line-height:1.45">Starting a new report files the old one here. Reopen it to keep working, or start a fresh walk that keeps its project details and sheets.</div>
+                <sc-for list="{{ reportCards }}" as="r" hint-placeholder-count="2">
+                  <div style="border:1px solid #E7E4DD;border-radius:4px;padding:13px;display:flex;flex-direction:column;gap:9px;background:#fff">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                      <div style="font-size:14px;font-weight:600">{{ r.title }}</div>
+                      <div onClick="{{ r.kill }}" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#72004C;cursor:pointer;white-space:nowrap">{{ r.killLabel }}</div>
+                    </div>
+                    <div style="font-size:12px;color:#6b6963;line-height:1.4">{{ r.detail }}</div>
+                    <div style="display:flex;gap:8px">
+                      <div onClick="{{ r.resume }}" style="flex:1;border:1px solid #000;border-radius:4px;padding:9px;text-align:center;font-size:12.5px;font-weight:600;cursor:pointer;background:#fff;color:#000">Reopen</div>
+                      <div onClick="{{ r.continueNew }}" style="flex:1;border:1px solid #000;border-radius:4px;padding:9px;text-align:center;font-size:12.5px;font-weight:600;cursor:pointer;background:#000;color:#fff">New from this</div>
+                    </div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ noReports }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12px;color:#8a8880;line-height:1.45;border:1px dashed #C8C4BA;border-radius:4px;padding:14px;background:#FAF9F6">No past reports yet.</div>
+                </sc-if>
+              </div>
+
+            </div>
+          </div>
+        </sc-if>
+
         <sc-if value="{{ isProject }}" hint-placeholder-val="{{ false }}">
           <div style="flex:1;display:flex;flex-direction:column;min-height:0">
             <div style="flex:0 0 auto;border-bottom:1px solid #E7E4DD">
               <div class="om-col" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px">
                 <div onClick="{{ goSheets }}" style="font-size:13px;font-weight:600;color:#2215CC;cursor:pointer;padding:4px 2px">‹ Sheets</div>
                 <div style="font-size:13px;font-weight:600">Project</div>
-                <div style="width:46px"></div>
+                <div onClick="{{ saveTemplate }}" title="Save these details for reuse" style="font-family:'Instrument Sans Cond';font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2215CC;cursor:pointer;white-space:nowrap">Save</div>
               </div>
             </div>
             <div class="om-col" style="flex:1;overflow-y:auto;padding:16px 16px 26px;display:flex;flex-direction:column;gap:14px">
-              <div style="font-size:12px;color:#6b6963;line-height:1.45">These appear on the exported report. Saved on this device with the rest of the walk.</div>
+              <sc-if value="{{ hasNote }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;line-height:1.4;color:#2215CC;font-weight:500">{{ note }}</div>
+              </sc-if>
+              <div style="font-size:12px;color:#6b6963;line-height:1.45">These appear on the exported report. Saved on this device with the rest of the walk. “Save” at the top keeps them as a reusable project.</div>
               <sc-for list="{{ projectFields }}" as="f" hint-placeholder-count="6">
                 <div style="display:flex;flex-direction:column;gap:6px">
                   <div style="font-family:'Instrument Sans Cond';font-weight:600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8880">{{ f.label }}</div>
@@ -469,7 +535,7 @@ const today = () => {
 };
 // Shown on the Project screen so "did my phone get the update?" is a glance
 // rather than a guess. Bump it with any deploy worth confirming.
-const BUILD = '2026-08-18 · durable storage';
+const BUILD = '2026-08-28 · projects + history';
 const PROJECT = {
   number: '', name: 'Project Name',
   clientName: '', clientNumber: '',
@@ -514,6 +580,12 @@ class Component extends DCLogic {
     persisted: null,
     savedAt: null,
     saveFailed: false,
+    // Saved project presets, and a lightweight index of archived reports.
+    // The reports themselves live under their own keys so listing them does
+    // not mean loading every photo of every past walk.
+    templates: [],
+    reportIndex: [],
+    confirmKill: null,
     project: { ...PROJECT, date: today() },
     planImgs: {},
     planHi: {},
@@ -546,7 +618,13 @@ class Component extends DCLogic {
     import('./store.js').then(async (store) => {
       this.store = store;
       try {
-        const saved = await store.get('state');
+        const [saved, templates, reportIndex] = await Promise.all([
+          store.get('state'), store.get('templates'), store.get('reportIndex')
+        ]);
+        this.setState({
+          templates: Array.isArray(templates) ? templates : [],
+          reportIndex: Array.isArray(reportIndex) ? reportIndex : []
+        });
         if (saved) this.setState(await this.rehydrate(saved), () => this.renderSheet(this.state.sheetId));
         else this.renderSheet(this.state.sheetId);
       } catch (e) { this.renderSheet(this.state.sheetId); }
@@ -658,6 +736,149 @@ class Component extends DCLogic {
     location.reload();
   };
 
+  // ---- Templates and past reports -----------------------------------------
+
+  // Shaped like persist()'s payload so an archived report restores through the
+  // same path the on-device state does.
+  snapshot() {
+    const st = this.state;
+    return {
+      project: st.project,
+      sheets: st.sheets.map(s => ({
+        id: s.id, name: s.name, isPdf: s.isPdf, page: s.page || 1,
+        blob: s.blob || null, file: s.blob ? null : s.file
+      })),
+      obs: st.obs.map(o => ({
+        id: o.id, sheet: o.sheet, x: o.x, y: o.y,
+        discipline: o.discipline, status: o.status, desc: o.desc,
+        photos: (o.photos || []).map(p => ({
+          id: p.id, taken: p.taken ? p.taken.toISOString() : null,
+          lat: p.lat ?? null, lon: p.lon ?? null, blob: p.blob || null
+        }))
+      }))
+    };
+  }
+
+  // Puts the working report into history. Returns the index entry, or null if
+  // there was nothing worth keeping, so callers can word their message right.
+  async archiveCurrent() {
+    if (!this.store) return null;
+    const st = this.state;
+    if (!st.obs.length && !st.sheets.length) return null;
+    const id = 'r' + Date.now();
+    const p = st.project;
+    const entry = {
+      id, savedAt: Date.now(),
+      number: p.number || '', name: p.name || '',
+      obsCount: st.obs.length, sheetCount: st.sheets.length
+    };
+    const index = [entry, ...this.state.reportIndex];
+    await this.store.set('report:' + id, this.snapshot());
+    await this.store.set('reportIndex', index);
+    this.setState({ reportIndex: index });
+    return entry;
+  }
+
+  writeTemplates(templates) {
+    this.setState({ templates });
+    if (this.store) this.store.set('templates', templates).catch(() => { });
+  }
+
+  saveTemplate = () => {
+    const p = this.state.project;
+    const label = [p.number, p.name].filter(Boolean).join(' — ') || 'Untitled project';
+    // The date is whatever day the walk happens, never part of the preset.
+    const tpl = { id: 't' + Date.now(), label, project: { ...p, date: '' } };
+    // Re-saving the same project updates its preset instead of stacking a duplicate.
+    this.writeTemplates([tpl, ...this.state.templates.filter(t => t.label !== label)]);
+    this.say('Saved “' + label + '” as a project');
+  };
+
+  applyTemplate(t) {
+    this.setState({
+      project: {
+        ...PROJECT, ...t.project,
+        date: today(),
+        recipients: normRecipients(t.project.recipients)
+      },
+      screen: 'sheets'
+    }, () => { this.flushSave(); this.say('Filled in ' + t.label); });
+  }
+
+  async restoreReport(id, freshWalk) {
+    if (!this.store) return;
+    let snap = null;
+    try { snap = await this.store.get('report:' + id); } catch (e) { }
+    if (!snap) { this.say('That report could not be read.'); return; }
+    // Never destroy what is open — it goes to history first.
+    await this.archiveCurrent();
+    this.state.sheets.forEach(s => {
+      if (s.blob) { try { URL.revokeObjectURL(s.file); } catch (err) { } }
+    });
+    this._docs = {};
+    const sheets = (snap.sheets || []).map(s => ({
+      ...s, file: s.blob ? URL.createObjectURL(s.blob) : s.file
+    }));
+    const obs = freshWalk ? [] : await Promise.all((snap.obs || []).map(async o => ({
+      ...o,
+      photos: await Promise.all((o.photos || []).filter(p => p.blob).map(async p => ({
+        ...p,
+        taken: p.taken ? new Date(p.taken) : null,
+        url: await this.toDataUrl(p.blob)
+      })))
+    })));
+    uid = Math.max(uid, ...obs.map(o => o.id || 0), ...obs.flatMap(o => (o.photos || []).map(p => p.id || 0)));
+    // Resuming moves the report out of history and back to being the live one,
+    // so it cannot end up listed twice. Continuing leaves the original alone.
+    let index = this.state.reportIndex;
+    if (!freshWalk) {
+      index = index.filter(r => r.id !== id);
+      if (this.store) {
+        this.store.set('reportIndex', index).catch(() => { });
+        this.store.del('report:' + id).catch(() => { });
+      }
+    }
+    this._view = { z: 1, tx: 0, ty: 0 };
+    this.setState({
+      sheets, obs, reportIndex: index,
+      project: {
+        ...PROJECT, ...(snap.project || {}),
+        date: freshWalk ? today() : ((snap.project || {}).date || today()),
+        recipients: normRecipients((snap.project || {}).recipients)
+      },
+      sheetId: sheets[0] ? sheets[0].id : '',
+      selId: obs.length ? obs[0].id : null,
+      screen: 'sheets', view: 'app', placing: false, relocId: null,
+      zoom: 1, tx: 0, ty: 0, confirmDel: null, confirmNew: false, confirmKill: null,
+      planImgs: {}, planHi: {}, planHiW: {}, planNativeW: {}, planErr: {},
+      planComposites: {}, photoComposites: {}, loading: {}
+    }, () => {
+      this.flushSave();
+      if (this.state.sheetId) this.renderSheet(this.state.sheetId);
+      this.say(freshWalk
+        ? 'New report started from that one — sheets kept, observations cleared'
+        : 'Reopened that report');
+    });
+  }
+
+  // Two taps, like the other destructive controls.
+  deleteReport(id) {
+    if (this.state.confirmKill !== id) {
+      this.setState({ confirmKill: id });
+      clearTimeout(this._killT);
+      this._killT = setTimeout(() => this.setState({ confirmKill: null }), 4000);
+      return;
+    }
+    clearTimeout(this._killT);
+    const index = this.state.reportIndex.filter(r => r.id !== id);
+    this.setState({ reportIndex: index, confirmKill: null });
+    if (this.store) {
+      this.store.set('reportIndex', index).catch(() => { });
+      this.store.del('report:' + id).catch(() => { });
+    }
+    this.say('Deleted that past report');
+  }
+
   // Two taps, same as removing a sheet — this drops every sheet, pin and
   // photo currently loaded, with no way back short of a saved project file.
   newReport = () => {
@@ -668,21 +889,27 @@ class Component extends DCLogic {
       return;
     }
     clearTimeout(this._newT);
-    this.state.sheets.forEach(s => {
-      if (s.blob) { try { URL.revokeObjectURL(s.file); } catch (err) { } }
-    });
-    this._docs = {};
-    this._view = { z: 1, tx: 0, ty: 0 };
-    this.setState({
-      sheets: [], obs: [], sheetId: '', selId: null,
-      screen: 'sheets', view: 'app', placing: false,
-      zoom: 1, tx: 0, ty: 0, confirmDel: null, confirmNew: false,
-      planImgs: {}, planHi: {}, planHiW: {}, planNativeW: {}, planErr: {},
-      planComposites: {}, photoComposites: {}, loading: {},
-      // Wipes project info too, so a leftover client/recipient list from the
-      // last job can't quietly ride along onto a new report's header.
-      project: { ...PROJECT, date: today() }
-    }, () => this.say('Started a new report'));
+    // The outgoing walk goes to Past reports rather than being destroyed, so
+    // this button can no longer cost anyone a day's work.
+    this.archiveCurrent().then(entry => {
+      this.state.sheets.forEach(s => {
+        if (s.blob) { try { URL.revokeObjectURL(s.file); } catch (err) { } }
+      });
+      this._docs = {};
+      this._view = { z: 1, tx: 0, ty: 0 };
+      this.setState({
+        sheets: [], obs: [], sheetId: '', selId: null,
+        screen: 'sheets', view: 'app', placing: false, relocId: null,
+        zoom: 1, tx: 0, ty: 0, confirmDel: null, confirmNew: false, confirmKill: null,
+        planImgs: {}, planHi: {}, planHiW: {}, planNativeW: {}, planErr: {},
+        planComposites: {}, photoComposites: {}, loading: {},
+        // Wipes project info too, so a leftover client/recipient list from the
+        // last job can't quietly ride along onto a new report's header.
+        project: { ...PROJECT, date: today() }
+      }, () => this.say(entry
+        ? 'Kept the old one in Past reports — started a new report'
+        : 'Started a new report'));
+    }).catch(() => { });
   };
 
   // Two taps rather than a confirm dialog — removing a sheet takes its
@@ -1591,6 +1818,34 @@ class Component extends DCLogic {
           : ''),
       hasStorageLabel: st.persisted !== null,
       isProject: st.screen === 'project',
+
+      isProjects: st.screen === 'projects',
+      goProjects: () => this.setState({ screen: 'projects', placing: false, relocId: null }),
+      saveTemplate: this.saveTemplate,
+      templateCards: st.templates.map(t => {
+        const r = normRecipients(t.project && t.project.recipients);
+        const bits = [t.project && t.project.clientName, r.length ? r.length + ' recipient' + (r.length === 1 ? '' : 's') : '']
+          .filter(Boolean);
+        return {
+          id: t.id, label: t.label,
+          detail: bits.length ? bits.join(' · ') : 'No client or recipients saved',
+          apply: () => this.applyTemplate(t),
+          remove: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.writeTemplates(st.templates.filter(x => x.id !== t.id)); }
+        };
+      }),
+      noTemplates: !st.templates.length,
+      reportCards: st.reportIndex.map(r => ({
+        id: r.id,
+        title: [r.number, r.name].filter(Boolean).join(' — ') || 'Untitled project',
+        detail: new Date(r.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          + ' · ' + r.obsCount + ' observation' + (r.obsCount === 1 ? '' : 's')
+          + ' · ' + r.sheetCount + ' sheet' + (r.sheetCount === 1 ? '' : 's'),
+        resume: () => this.restoreReport(r.id, false),
+        continueNew: () => this.restoreReport(r.id, true),
+        killLabel: st.confirmKill === r.id ? 'Tap again' : 'Delete',
+        kill: () => this.deleteReport(r.id)
+      })),
+      noReports: !st.reportIndex.length,
 
       recipientRows: (P.recipients || []).map((r, i) => ({
         label: 'Recipient ' + (i + 1),

@@ -60,6 +60,24 @@ pdf.js version, replace those files and bump `CACHE` in `sw.js`.
 - Rendering a heavy CAD sheet the first time takes a few seconds, and again the first time you zoom past each detail step.
 - Data lives only on that one phone unless you use **Save** on the Sheets screen, which writes the whole walk to one file you can back up or open on another phone.
 
+## Projects and past reports
+
+**Projects** on the Sheets screen holds two things.
+
+*Your projects* are saved presets. Fill in the project details and recipients
+once, tap **Save** on the Project screen, and that job becomes a one-tap button
+for every future walk. The report date is never part of a preset — it is always
+the day you walk.
+
+*Past reports* fills itself: starting a new report files the outgoing one here
+rather than deleting it. Each has two buttons:
+
+- **Reopen** — picks that walk back up, observations and all. It leaves the list,
+  since it is now the live report, so nothing is ever listed twice.
+- **New from this** — starts a fresh walk that keeps the project details and the
+  plan sheets but no observations. This is the one for a repeat visit to a site
+  you already have loaded.
+
 ## Does it keep my work?
 
 Every change is written to the phone's own database. Photos, and one-shot edits
